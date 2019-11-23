@@ -1,10 +1,10 @@
-import pygame, sys
-from .bp_basics import *
+from classes.bp_basics import *
+from classes.Color_Scheme import *
 
 
 class Text:
     def __init__(self, game, font_name='Arial', font_size=25, is_bold=True, is_italic=False, text='Text',
-                 color=(255, 255, 255), x=0, y=0):
+                 color=Color.WHITE, x=0, y=0):
         self.game = game
         self.font_name = font_name
         self.font_size = font_size
@@ -62,18 +62,4 @@ class Button(Drawable):
         pass
 
     def act(self, event):
-        pass
-
-
-class Color:
-    RED = (200, 0, 0)
-    DARK_RED = (255, 0, 0)
-    BLUE = (0, 0, 255)
-    GREEN = (0, 200, 0)
-    DARK_GREEN = (0, 255, 0)
-    BLACK = (0, 0, 0)
-    WHITE = (255, 255, 255)
-    ORANGE = (255, 180, 0)
-
-    def __init__(self):
         pass

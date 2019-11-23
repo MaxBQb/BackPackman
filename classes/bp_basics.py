@@ -1,41 +1,50 @@
 import pygame
-import sys
+from sys import exit
+from math import ceil
+from .Color_Scheme import *
 
 
 class Game:
     def __init__(self, w: int, h: int):
-        self.background = (0, 0, 0)
+        pygame.init()
+        self.background = Color.BLACK
         self.screen = None
         self.size = (w, h)
         self.GameOver = False
         self.Paused = False
         self.current_room = None
-        self.clock = pygame.time.Clock()
+        self.counter = 0
 
     def process_events(self):
         for e in pygame.event.get():
             if e.type == pygame.QUIT:
                 self.GameOver = True
+            if e.type == pygame.KEYUP and e.key == pygame.K_SPACE:
+                if not self.Paused:
+                    self.pause()
+                self.Paused = not self.Paused
             if not self.Paused:
                 self.current_room.process_event(e)
 
+    def pause(self):
+        pass
+
     def start(self, s_room):
-        pygame.init()
         self.current_room = s_room
         self.screen = pygame.display.set_mode(self.size)
         while not self.GameOver:
             self.process_events()
-            self.current_room.step()
-            self.screen.fill(self.background)
-            self.current_room.draw()
-            pygame.display.flip()
-            pygame.time.wait(60)
+            if not self.Paused:
+                self.current_room.step()
+                self.screen.fill(self.background)
+                self.current_room.draw()
+                pygame.display.flip()
         quit()
 
     @staticmethod
     def quit():
         pygame.quit()
-        sys.exit(0)
+        exit(0)
 
 
 class Room:
@@ -48,7 +57,7 @@ class Room:
     def __init__(self, game: Game):
         self.game = game
         # Сюда классы наследники добавляют объекты для отрисовки
-        self.toDraw = [Level(game)]
+        self.toDraw = []
         # А сюда для взаимодействия
         self.eventListeners = []
 
@@ -81,11 +90,11 @@ def transit(game: Game, room: Room):
 class Drawable:
     image = pygame.image.load("images/null.png")
 
-    def __init__(self, game: Game, x=0, y=0):
-        self.x, self.y, self.game = x, y, game
+    def __init__(self, game: Game, x: int = 0, y: int = 0, offset: (int, int) = (0, 0)):
+        self.x, self.y, self.game, self.offset = x, y, game, offset
 
     def draw(self):
-        self.game.screen.blit(self.image, (self.x, self.y))
+        self.game.screen.blit(self.image, (self.x - self.offset[0], self.y - self.offset[1]))
 
 
 class Interactable:
@@ -99,38 +108,27 @@ class Interactable:
         pass
 
 
-class Level(Drawable):
-    def __init__(self, game):
-        super(Level, self).__init__(game)
-        self.map = matrix = [[0] * 5 for i in range(5)]
-        self.map[0][0] = 1
-        self.map[1][1] = 1
-        self.map[2][2] = 1
-
-    def draw(self):
-        for j in range(len(self.map)):
-            for i in range(len(self.map[j])):
-
-                if self.map[i][j] == 1:
-                    pygame.draw.rect(self.game.screen, (255, 0, 0), (i * 30 + self.x, j * 30 + self.y, 30, 30))
-                if self.map[i][j] == 0:
-                    pygame.draw.rect(self.game.screen, (0, 255, 0), (i * 30 + self.x, j * 30 + self.y, 30, 30))
-
-
 class Creature(Interactable, Drawable):
-    def __init__(self, game: Game, x: int, y: int, offset: (int, int) = (0, 0)):
-        super(Creature, self).__init__(game)
+    def __init__(self, game: Game, x: int = 0, y: int = 0, offset: (int, int) = (0, 0)):
+        Drawable.__init__(self, game, x, y, offset)
+        Interactable.__init__(self, game)
         self.game = game
         self.x, self.y = x, y
-        self.offset = offset
         self.is_alive = True
 
     def get_pos(self):
         return self.x, self.y
 
+    def may_collide_with(self, x, y):
+        return self.game.current_room.map[ceil((y - self.offset[1]) / 30)][ceil((x - self.offset[0]) / 30)] + self.game.current_room.map[(y - self.offset[1]) // 30][(x - self.offset[0]) // 30]
+
     def set_pos(self, x, y) -> bool:
         # Нужно добавить проверку на возможность перемещения
-        if self.game.size[0] - self.offset[0] < x or x < 0 or self.game.size[1] - self.offset[1] < y or y < 0:
+        if not self.offset[0] <= x <= self.game.size[0] - self.offset[0]:
+            return False
+        if not self.offset[1] <= y <= self.game.size[1] - self.offset[1]:
+            return False
+        if None in self.may_collide_with(x, y):
             return False
         self.x, self.y = x, y
         return True
@@ -142,7 +140,18 @@ class Creature(Interactable, Drawable):
         self.is_alive = False
 
 
-class FreeSpace(Interactable, Drawable):
-    # Пути, по которым Creature ходит
-    def __init__(self, game: Game, x: int, y: int):
-        super(FreeSpace, self).__init__(game, x, y)
+class Spawner(Interactable):
+    def __init__(self, game: Game, creature: Creature):
+        super().__init__(game)
+        self.can_spawn = True
+        self.creature = creature
+
+    def step(self):
+        if self.can_spawn:
+            self.can_spawn = False
+            self.creature.is_alive = True
+            self.game.current_room.toDraw.append(self.creature)
+            self.game.current_room.eventListeners.append(self.creature)
+
+    def spawn(self):
+        self.can_spawn = True
