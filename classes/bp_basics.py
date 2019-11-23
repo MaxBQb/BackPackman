@@ -1,4 +1,5 @@
-import pygame, sys
+import pygame
+import sys
 
 
 class Game:
@@ -47,7 +48,7 @@ class Room:
     def __init__(self, game: Game):
         self.game = game
         # Сюда классы наследники добавляют объекты для отрисовки
-        self.toDraw = []
+        self.toDraw = [Level(game)]
         # А сюда для взаимодействия
         self.eventListeners = []
 
@@ -80,7 +81,7 @@ def transit(game: Game, room: Room):
 class Drawable:
     image = pygame.image.load("images/null.png")
 
-    def __init__(self, game: Game, x: int, y: int):
+    def __init__(self, game: Game, x=0, y=0):
         self.x, self.y, self.game = x, y, game
 
     def draw(self):
@@ -96,6 +97,24 @@ class Interactable:
 
     def step(self):
         pass
+
+
+class Level(Drawable):
+    def __init__(self, game):
+        super(Level, self).__init__(game)
+        self.map = matrix = [[0] * 5 for i in range(5)]
+        self.map[0][0] = 1
+        self.map[1][1] = 1
+        self.map[2][2] = 1
+
+    def draw(self):
+        for j in range(len(self.map)):
+            for i in range(len(self.map[j])):
+
+                if self.map[i][j] == 1:
+                    pygame.draw.rect(self.game.screen, (255, 0, 0), (i * 30 + self.x, j * 30 + self.y, 30, 30))
+                if self.map[i][j] == 0:
+                    pygame.draw.rect(self.game.screen, (0, 255, 0), (i * 30 + self.x, j * 30 + self.y, 30, 30))
 
 
 class Creature(Interactable, Drawable):
