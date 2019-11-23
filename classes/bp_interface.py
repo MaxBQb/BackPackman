@@ -1,5 +1,5 @@
 import pygame, sys
-from bp_basics import *
+from .bp_basics import *
 
 
 class Text:

@@ -3,8 +3,8 @@ BackPackMan v0.0.1 initial
 '''
 
 import pygame, sys
-from bp_basics import *
-from bp_interface import *
+from classes.bp_basics import *
+from classes.bp_interface import *
 
 
 class Menu(Room):

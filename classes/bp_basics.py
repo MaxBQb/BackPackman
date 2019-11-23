@@ -78,7 +78,7 @@ def transit(game: Game, room: Room):
 
 
 class Drawable:
-    image = pygame.image.load("null.png")
+    image = pygame.image.load("images/null.png")
 
     def __init__(self, game: Game, x: int, y: int):
         self.x, self.y, self.game = x, y, game
