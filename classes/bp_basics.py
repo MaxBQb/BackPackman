@@ -1,7 +1,7 @@
 import pygame
 from sys import exit
 from math import ceil
-from .Color_Scheme import *
+from classes.Color_Scheme import *
 
 
 class Game:
@@ -35,10 +35,12 @@ class Game:
         while not self.GameOver:
             self.process_events()
             if not self.Paused:
-                self.current_room.step()
+                if not self.counter % 3:
+                    self.current_room.step()
                 self.screen.fill(self.background)
                 self.current_room.draw()
                 pygame.display.flip()
+            self.counter += 1
         quit()
 
     @staticmethod
@@ -123,8 +125,7 @@ class Creature(Interactable, Drawable):
         return self.game.current_room.map[ceil((y - self.offset[1]) / 30)][ceil((x - self.offset[0]) / 30)] + self.game.current_room.map[(y - self.offset[1]) // 30][(x - self.offset[0]) // 30]
 
     def set_pos(self, x, y) -> bool:
-        # Нужно добавить проверку на возможность перемещения
-        if not self.offset[0] <= x <= self.game.size[0] - self.offset[0]:
+        if self.offset[0] > x > self.game.size[0] - self.offset[0]:
             return False
         if not self.offset[1] <= y <= self.game.size[1] - self.offset[1]:
             return False

@@ -13,10 +13,8 @@ class Menu(Room):
     def __init__(self, game):
         super().__init__(game)
         title = Text(game=self.game, text='BACK_PAC_MAN')
-
         start_text = Text(self.game, text='START GAME')
-        start_text_w = start_text.get_size()[0]
-        start_text_h = start_text.get_size()[1]
+        start_text_w, start_text_h = start_text.get_size()
         start_text.update_position(x=self.game.size[0] / 2 - start_text_w / 2, y=self.game.size[1] / 3)
 
         end_text = Text(self.game, text='EXIT GAME')
@@ -27,11 +25,8 @@ class Menu(Room):
                            Action(transit, game=self.game, room=MainField(self.game)))
         exit_btn = Button(self.game, end_text, Color.RED, Color.DARK_RED, Action(quit))
 
-        self.toDraw.append(title)
-        self.toDraw.append(start_btn)
-        self.toDraw.append(exit_btn)
-        self.eventListeners.append(start_btn)
-        self.eventListeners.append(exit_btn)
+        self.toDraw += [title, start_btn, exit_btn]
+        self.eventListeners += [start_btn, exit_btn]
 
 
 class MainField(Room):

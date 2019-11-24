@@ -2,30 +2,26 @@ from classes.bp_basics import *
 from classes.Color_Scheme import *
 
 
-class Text:
+class Text(Drawable):
     def __init__(self, game, font_name='Arial', font_size=25, is_bold=True, is_italic=False, text='Text',
                  color=Color.WHITE, x=0, y=0):
-        self.game = game
+        super().__init__(game, x, y)
         self.font_name = font_name
         self.font_size = font_size
         self.is_bold = is_bold
         self.is_italic = is_italic
         self.color = color
-        self.x, self.y = x, y
         self.text = ''
-        self.text_surface = None
+        self.image = None
         self.font = pygame.font.SysFont(self.font_name, self.font_size, self.is_bold, self.is_italic)
         self.update_text(text)
 
     def update_text(self, text):
         self.text = text
-        self.text_surface = self.font.render(self.text, True, self.color)
+        self.image = self.font.render(self.text, True, self.color)
 
     def update_position(self, x, y):
         self.x, self.y = x, y
-
-    def draw(self):
-        self.game.screen.blit(self.text_surface, [self.x, self.y])
 
     def get_size(self):
         return self.font.size(self.text)
