@@ -76,8 +76,8 @@ class MainField(Room):
         T или < или > = Teleport
         # = стена (подразумевается)
         '''
-        for l, line in enumerate(field, 0):
-            for c, char in enumerate(line, 0):
+        for l, line in enumerate(field):
+            for c, char in enumerate(line):
                 if char in ' _+IPBC$@*':
                     fs = FreeSpace(self.game, c*30, l*30)
                     self.map[l][c].append(fs)
