@@ -8,6 +8,7 @@ class Game:
     def __init__(self, w: int, h: int):
         pygame.init()
         self.background = Color.BLACK
+        self.backdrop = None
         self.screen = None
         self.size = (w, h)
         self.GameOver = False
@@ -37,7 +38,11 @@ class Game:
             if not self.Paused:
                 if not self.counter % 3:
                     self.current_room.step()
-                self.screen.fill(self.background)
+                if self.backdrop is not None:
+                    img = pygame.image.load(self.backdrop)
+                    self.screen.blit(img, (0,0))
+                else:
+                    self.screen.fill(self.background)
                 self.current_room.draw()
                 pygame.display.flip()
             self.counter += 1
