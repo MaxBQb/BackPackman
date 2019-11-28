@@ -14,6 +14,7 @@ class Game:
         self.Paused = False
         self.current_room = None
         self.counter = 0
+        self.score = 0
 
     def process_events(self):
         for e in pygame.event.get():

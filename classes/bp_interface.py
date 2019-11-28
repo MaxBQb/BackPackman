@@ -15,6 +15,7 @@ class Text(Drawable):
         self.image = None
         self.font = pygame.font.SysFont(self.font_name, self.font_size, self.is_bold, self.is_italic)
         self.update_text(text)
+        self.update_position(x, y)
 
     def update_text(self, text):
         self.text = text
@@ -22,6 +23,11 @@ class Text(Drawable):
 
     def update_position(self, x, y):
         self.x, self.y = x, y
+
+    def draw(self):
+        self.game.screen.fill(self.game.background, (self.game.size[0] // 2 - 30, self.game.size[1] - 30,
+                                                     self.get_size()[0], self.get_size()[1]))
+        self.game.screen.blit(self.image, [self.x, self.y])
 
     def get_size(self):
         return self.font.size(self.text)

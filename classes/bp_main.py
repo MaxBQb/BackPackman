@@ -26,7 +26,7 @@ class Menu(Room):
         exit_btn = Button(self.game, end_text, Color.RED, Color.DARK_RED, Action(quit))
 
         self.toDraw += [title, start_btn, exit_btn]
-        self.eventListeners += [start_btn, exit_btn]
+        self.eventListeners += [exit_btn, start_btn]
 
 
 class MainField(Room):
@@ -59,7 +59,7 @@ class MainField(Room):
             "#*##########*##*##########*#",
             "#**************************#",
             "############################"
-             ]
+        ]
         self.parse_field(field)
 
     def parse_field(self, field: list):
@@ -78,33 +78,33 @@ class MainField(Room):
         for l, line in enumerate(field):
             for c, char in enumerate(line):
                 if char in ' _+IPBCHP$@*':
-                    fs = FreeSpace(self.game, c*30, l*30)
+                    fs = FreeSpace(self.game, c * 30, l * 30)
                     self.map[l][c].append(fs)
                     self.toDraw.append(fs)
                 else:
                     self.map[l][c].append(None)
                 if char is '$':
-                    spwn = Spawner(self.game, Pacman(self.game, c*30+15, l*30+15))
+                    spwn = Spawner(self.game, Pacman(self.game, c * 30 + 15, l * 30 + 15))
                     self.map[l][c].append(spwn)
                     self.eventListeners.append(spwn)
                 if char in '*+':
                     if char == '*':
-                        seed = Seed(self.game, c*30+15, l*30+15, 100, 3)
+                        seed = Seed(self.game, c * 30 + 15, l * 30 + 15, 1, 3)
                     else:
-                        seed = Seed(self.game, c*30+15, l*30+15, 100, 6)
+                        seed = Seed(self.game, c * 30 + 15, l * 30 + 15, 10, 6)
                     self.map[l][c].append(seed)
                     self.toDraw.append(seed)
 
+    def update_score(self):
+        score_text = Text(self.game, text="Score: {}".format(self.game.score), x=self.game.size[0] // 2 - 30, y=self.game.size[1] - 30)
+        self.toDraw.append(score_text)
 
     def draw(self):
-        '''
-        text = Text(self.game, text="This is a main field", x=100, y=100)
-        back_text = Text(self.game, text="MAIN MENU", x=self.game.size[0] // 2, y=self.game.size[1] // 2)
-        back_btn = Button(self.game, back_text, Color.GREEN, Color.DARK_GREEN, Action(transit, game=self.game, room=Menu(self.game)))
-        self.toDraw.append(text)
-        self.toDraw.append(back_text)
-        self.toDraw.append(back_btn)
-        '''
+        back_text = Text(self.game, text="MAIN MENU", x=30, y=self.game.size[1] - 30)
+        back_btn = Button(self.game, back_text, Color.GREEN, Color.DARK_GREEN,
+                          Action(transit, game=self.game, room=Menu(self.game)))
+        self.toDraw += [back_text, back_btn]
+        self.update_score()
         super().draw()
 
 
@@ -114,7 +114,7 @@ class Pacman(Creature):
     def __init__(self, game: Game, x: int, y: int):
         super().__init__(game, x, y, (15, 15))
         self.move_cache = []
-        self.speed = 1
+        self.speed = 10
         self.score = 0
         self.look_forward = True
         self.look_vertical = False
@@ -129,6 +129,7 @@ class Pacman(Creature):
         for e in self.may_collide_with(self.x, self.y):
             if isinstance(e, Seed):
                 self.score += e.score
+                #self.game.score = self.score // 10
                 e.eat()
         if len(self.move_cache):
             mx_c, my_c = 0, 0
@@ -152,7 +153,8 @@ class Pacman(Creature):
 
     def draw(self):
         im = self.image
-        self.image = pygame.transform.flip(self.image, self.look_forward if self.look_vertical else not self.look_forward, False)
+        self.image = pygame.transform.flip(self.image,
+                                           self.look_forward if self.look_vertical else not self.look_forward, False)
         self.image = pygame.transform.rotate(self.image, -90 if self.look_vertical else 0)
         Drawable.draw(self)
         self.image = im
@@ -171,6 +173,7 @@ class Seed(Creature):
 
     def die(self):
         self.game.current_room.toDraw.remove(self)
+        self.game.score += self.score
         super().die()
 
     def draw(self):
@@ -181,5 +184,6 @@ class FreeSpace(Drawable):
     '''
     Только отображение коридоров
     '''
+
     def draw(self):
         pygame.draw.rect(self.game.screen, Color.BLACK, (self.x, self.y, 30, 30))
