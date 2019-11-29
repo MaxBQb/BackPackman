@@ -114,6 +114,7 @@ class Pacman(Creature):
     def __init__(self, game: Game, x: int, y: int):
         super().__init__(game, x, y, (15, 15))
         self.move_cache = []
+        self.pressed_key = None
         self.speed = 10
         self.score = 0
         self.look_forward = True
@@ -121,34 +122,36 @@ class Pacman(Creature):
 
     def act(self, e: pygame.event):
         if e.type == pygame.KEYDOWN:
-            if e.key in (119, 97, 115, 100) and (not len(self.move_cache) or self.move_cache[-1] != e.key) and len(
-                    self.move_cache) < 5:
-                self.move_cache.append(e.key)
+            if e.key in (119, 97, 115, 100) and self.pressed_key is None:
+                self.pressed_key = e.key
+                self.step()
+        if e.type == pygame.KEYUP:
+            if e.key in (119, 97, 115, 100) and self.pressed_key == e.key:
+                self.pressed_key = None
 
     def step(self):
         for e in self.may_collide_with(self.x, self.y):
             if isinstance(e, Seed):
                 self.score += e.score
-                #self.game.score = self.score // 10
                 e.eat()
-        if len(self.move_cache):
+        if self.pressed_key is not None:
             mx_c, my_c = 0, 0
-            if self.move_cache[0] == 119:
+            if self.pressed_key == 119:
                 my_c = -1
                 self.look_forward = self.look_vertical = True
-            elif self.move_cache[0] == 97:
+            elif self.pressed_key == 97:
                 mx_c = -1
                 self.look_forward = self.look_vertical = False
-            elif self.move_cache[0] == 115:
+            elif self.pressed_key == 115:
                 my_c = 1
                 self.look_forward = False
                 self.look_vertical = True
-            elif self.move_cache[0] == 100:
+            elif self.pressed_key == 100:
                 mx_c = 1
                 self.look_forward = True
                 self.look_vertical = False
             if not self.move(self.speed * mx_c, self.speed * my_c):
-                self.move_cache.pop(0)
+                self.pressed_key = None
                 self.step()
 
     def draw(self):
