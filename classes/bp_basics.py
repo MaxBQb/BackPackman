@@ -139,11 +139,12 @@ class Creature(Interactable, Drawable):
         '''
         '''
         ### Расчитываем,
-        #O# в которую из сторон смещён,
+        #o# в которую из сторон смещён,
         ### проверяем столкновения с этой областью.
         '''
         pos_x, pos_y = x // 30, y // 30
-        lower_bound_x, upper_bound_x, lower_bound_y, upper_bound_y = x % 30 < self.offset[0], x % 30 > self.offset[0], y % 30 < self.offset[1], y % 30 > self.offset[1]
+        lower_bound_x, upper_bound_x = x % 30 < self.offset[0], x % 30 > self.offset[0],
+        lower_bound_y, upper_bound_y = y % 30 < self.offset[1], y % 30 > self.offset[1]
         collisions = self.game.current_room.map[pos_y][pos_x][::]
         if lower_bound_x:
             collisions += self.game.current_room.map[pos_y][pos_x - 1]

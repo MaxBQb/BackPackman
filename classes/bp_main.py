@@ -49,7 +49,7 @@ class MainField(Room):
             "_____#*##__________##*#_____",
             "_____#*##_###__###_##*#_____",
             "######*##_#_HIPH_#_##*######",
-            "______*___#_HCBH_#___*______",
+            ">_____*___#_HCBH_#___*_____<",
             "######*##_#_HHHH_#_##*######",
             "_____#*##_########_##*#_____",
             "_____#*##____$_____##*#_____",
@@ -75,28 +75,39 @@ class MainField(Room):
         B = Blinky
         C = Clyde
         $ = Packman Spawner
-        T или < или > = Teleport
+        < или > = Teleport (стрелка - направление переноса)
         # = стена (подразумевается)
         '''
+        teleports = {}
         for l, line in enumerate(field):
             for c, char in enumerate(line):
-                if char in ' _+IPBCHP$@*':
+                if char in ' _+IPBCHP<>$@*':
                     fs = FreeSpace(self.game, c * 30, l * 30)
                     self.map[l][c].append(fs)
                     self.toDraw.append(fs)
                 else:
                     self.map[l][c].append(None)
-                if char is '$':
+                if char == '$':
                     spwn = Spawner(self.game, Pacman(self.game, c * 30 + 15, l * 30 + 15))
                     self.map[l][c].append(spwn)
                     self.eventListeners.append(spwn)
-                if char in '*+':
+                elif char in '<>':
+                    tp = Teleport(self.game, c * 30 + 15, l * 30 + 15)
+                    self.map[l][c].append(tp)
+                    if l in teleports:
+                        teleports[l] += [tp]
+                    else:
+                        teleports[l] = [tp]
+                elif char in '*+':
                     if char == '*':
                         seed = Seed(self.game, c * 30 + 15, l * 30 + 15, 1, 3)
                     else:
                         seed = Seed(self.game, c * 30 + 15, l * 30 + 15, 10, 6)
                     self.map[l][c].append(seed)
                     self.toDraw.append(seed)
+        for t in teleports.values():
+            if len(t) == 2:
+                t[0].connect(t[1])
 
     def change_score(self, x):
         self.game.score += x
@@ -128,20 +139,22 @@ class Pacman(Creature):
         for e in self.may_collide_with(self.x, self.y):
             if isinstance(e, Seed):
                 e.eat()
+            if isinstance(e, Teleport):
+                e.apply(self)
         if len(self.move_cache):
             mx_c, my_c = 0, 0
             look_forward = self.look_forward
             look_vertical = self.look_vertical
             if len(self.move_cache) > 1:
-                if self.move_cache[1] == 119:
+                if self.move_cache[0] != 115 and self.move_cache[1] == 119:
                     my_c = -1
-                elif self.move_cache[1] == 97:
+                elif self.move_cache[0] != 100 and self.move_cache[1] == 97:
                     mx_c = -1
-                elif self.move_cache[1] == 115:
+                elif self.move_cache[0] != 119 and self.move_cache[1] == 115:
                     my_c = 1
-                elif self.move_cache[1] == 100:
+                elif self.move_cache[0] != 97 and self.move_cache[1] == 100:
                     mx_c = 1
-                if self.can_move(self.speed * mx_c, self.speed * my_c):
+                if (mx_c or my_c) and self.can_move(self.speed * mx_c, self.speed * my_c):
                     self.move_cache.pop(0)
             mx_c, my_c = 0, 0
             if self.move_cache[0] == 119:
@@ -209,3 +222,21 @@ class FreeSpace(Drawable):
             pygame.draw.line(self.game.screen, Color.ORANGE, (self.x, self.y+30), (self.x+30, self.y+30), 4)
         if self.y//30 < 23 and self.x//30 < 27 and None in self.game.current_room.map[self.y//30][self.x//30+1]:
             pygame.draw.line(self.game.screen, Color.ORANGE, (self.x+30, self.y), (self.x+30, self.y+30), 4)
+
+
+class Teleport(Interactable):
+    def __init__(self, game: Game, x, y):
+        super().__init__(game)
+        self.x, self.y = x, y
+        self.cooldown = 40
+        self.last_active = 0
+        self.out = None
+
+    def connect(self, other) -> bool:
+        self.out = other
+        other.out = self
+
+    def apply(self, entity: Creature):
+        if self.out and self.game.counter - self.last_active > self.cooldown:
+            entity.set_pos(self.out.x, self.out.y)
+            self.last_active = self.out.last_active = self.game.counter
