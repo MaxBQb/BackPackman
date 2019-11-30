@@ -12,15 +12,19 @@ class Game:
         self.size = (w, h)
         self.GameOver = False
         self.Paused = False
+        self.pause_resist = None
         self.current_room = None
         self.counter = 0
         self.score = 0
+        self.pause_screen = pygame.Surface(self.size, pygame.SRCALPHA)
+        self.pause_screen.fill((0, 0, 0, 200))
 
     def process_events(self):
         for e in pygame.event.get():
             if e.type == pygame.QUIT:
                 self.GameOver = True
-            if e.type == pygame.KEYUP and e.key == pygame.K_SPACE:
+            if e.type == pygame.KEYUP and e.key == pygame.K_SPACE \
+                    and self.pause_resist is not self.current_room:
                 if not self.Paused:
                     self.pause()
                 self.Paused = not self.Paused
@@ -28,19 +32,23 @@ class Game:
                 self.current_room.process_event(e)
 
     def pause(self):
-        pass
+        self.screen.blit(self.pause_screen, (0, 0))
+        pygame.display.flip()
 
     def start(self, s_room):
+        self.pause_resist = s_room
         self.current_room = s_room
+        self.preload_room = s_room
         self.screen = pygame.display.set_mode(self.size)
         while not self.GameOver:
             self.process_events()
             if not self.Paused:
-                if not self.counter % 3:
-                    self.current_room.step()
+                #if not self.counter % 3:
+                self.current_room.step()
                 self.screen.fill(self.background)
                 self.current_room.draw()
                 pygame.display.flip()
+            self.current_room = self.preload_room
             self.counter += 1
         quit()
 
@@ -57,8 +65,10 @@ class Room:
     Отвечает за их отрисовку и интерактивность.
     '''
 
-    def __init__(self, game: Game):
+    def __init__(self, game: Game, prev_room = None, next_room = None):
         self.game = game
+        self.prev_room = prev_room
+        self.next_room = next_room
         # Сюда классы наследники добавляют объекты для отрисовки
         self.toDraw = []
         # А сюда для взаимодействия
@@ -87,7 +97,7 @@ class Action:
 
 
 def transit(game: Game, room: Room):
-    game.current_room = room
+    game.preload_room = room
 
 
 class Drawable:
@@ -122,21 +132,57 @@ class Creature(Interactable, Drawable):
     def get_pos(self):
         return self.x, self.y
 
-    def may_collide_with(self, x, y):
-        return self.game.current_room.map[ceil((y - self.offset[1]) / 30)][ceil((x - self.offset[0]) / 30)] + self.game.current_room.map[(y - self.offset[1]) // 30][(x - self.offset[0]) // 30]
+    def may_collide_with(self, x: int, y: int) -> list:
+        '''
+        Получить все вероятно пересекаемые объекты
+        :return: Список касаний
+        '''
+        '''
+        ### Расчитываем,
+        #O# в которую из сторон смещён,
+        ### проверяем столкновения с этой областью.
+        '''
+        pos_x, pos_y = x // 30, y // 30
+        lower_bound_x, upper_bound_x, lower_bound_y, upper_bound_y = x % 30 < self.offset[0], x % 30 > self.offset[0], y % 30 < self.offset[1], y % 30 > self.offset[1]
+        collisions = self.game.current_room.map[pos_y][pos_x][::]
+        if lower_bound_x:
+            collisions += self.game.current_room.map[pos_y][pos_x - 1]
+        if upper_bound_x:
+            collisions += self.game.current_room.map[pos_y][pos_x + 1]
+        if lower_bound_y:
+            collisions += self.game.current_room.map[pos_y - 1][pos_x]
+        if upper_bound_y:
+            collisions += self.game.current_room.map[pos_y + 1][pos_x]
+        if lower_bound_x and lower_bound_y:
+            collisions += self.game.current_room.map[pos_y - 1][pos_x - 1]
+        if lower_bound_x and upper_bound_y:
+            collisions += self.game.current_room.map[pos_y + 1][pos_x - 1]
+        if upper_bound_x and lower_bound_y:
+            collisions += self.game.current_room.map[pos_y - 1][pos_x + 1]
+        if upper_bound_x and upper_bound_y:
+            collisions += self.game.current_room.map[pos_y + 1][pos_x + 1]
+        return collisions
 
-    def set_pos(self, x, y) -> bool:
-        if self.offset[0] > x > self.game.size[0] - self.offset[0]:
+    def can_set(self, x: int, y: int) -> bool:
+        if not self.offset[0] <= x <= self.game.size[0] - self.offset[0]:
             return False
         if not self.offset[1] <= y <= self.game.size[1] - self.offset[1]:
             return False
         if None in self.may_collide_with(x, y):
             return False
-        self.x, self.y = x, y
         return True
+
+    def set_pos(self, x, y) -> bool:
+        if self.can_set(x, y):
+            self.x, self.y = x, y
+            return True
+        return False
 
     def move(self, x: int, y: int) -> bool:
         return self.set_pos(self.x + x, self.y + y)
+
+    def can_move(self, x: int, y: int) -> bool:
+        return self.can_set(self.x + x, self.y + y)
 
     def die(self):
         self.is_alive = False

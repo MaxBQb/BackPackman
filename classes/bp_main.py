@@ -12,26 +12,29 @@ class Menu(Room):
 
     def __init__(self, game):
         super().__init__(game)
+        self.next_room = MainField(game, self)
         title = Text(game=self.game, text='BACK_PAC_MAN')
         start_text = Text(self.game, text='START GAME')
         start_text_w, start_text_h = start_text.get_size()
         start_text.update_position(x=self.game.size[0] / 2 - start_text_w / 2, y=self.game.size[1] / 3)
-
         end_text = Text(self.game, text='EXIT GAME')
         end_text_w = end_text.get_size()[0]
         end_text.update_position(x=self.game.size[0] / 2 - end_text_w / 2, y=self.game.size[1] / 3 + start_text_h + 10)
 
         start_btn = Button(self.game, start_text, Color.GREEN, Color.DARK_GREEN,
-                           Action(transit, game=self.game, room=MainField(self.game)))
+                           Action(transit, game=self.game, room=self.next_room))
         exit_btn = Button(self.game, end_text, Color.RED, Color.DARK_RED, Action(quit))
-
         self.toDraw += [title, start_btn, exit_btn]
         self.eventListeners += [exit_btn, start_btn]
 
 
 class MainField(Room):
-    def __init__(self, game):
-        super().__init__(game)
+    def __init__(self, game, prev_room: Room = None):
+        super().__init__(game, prev_room)
+        self.lbl_score = Text(self.game, text="Score: {}".format(self.game.score), x=self.game.size[0] // 2 - 30, y=self.game.size[1] - 30)
+        back_text = Text(self.game, text="MAIN MENU", x=30, y=self.game.size[1] - 30)
+        back_btn = Button(self.game, back_text, Color.GREEN, Color.DARK_GREEN, Action(transit, game=self.game, room=prev_room))
+        self.toDraw += [back_text, back_btn, self.lbl_score]
         game.background = Color.BLUE
         self.map = [[list() for j in range(28)] for i in range(24)]
         field = [
@@ -58,7 +61,7 @@ class MainField(Room):
             "#******##****##****##******#",
             "#*##########*##*##########*#",
             "#**************************#",
-            "############################"
+            "############################",
         ]
         self.parse_field(field)
 
@@ -95,17 +98,12 @@ class MainField(Room):
                     self.map[l][c].append(seed)
                     self.toDraw.append(seed)
 
-    def update_score(self):
-        score_text = Text(self.game, text="Score: {}".format(self.game.score), x=self.game.size[0] // 2 - 30, y=self.game.size[1] - 30)
-        self.toDraw.append(score_text)
-
-    def draw(self):
-        back_text = Text(self.game, text="MAIN MENU", x=30, y=self.game.size[1] - 30)
-        back_btn = Button(self.game, back_text, Color.GREEN, Color.DARK_GREEN,
-                          Action(transit, game=self.game, room=Menu(self.game)))
-        self.toDraw += [back_text, back_btn]
+    def change_score(self, x):
+        self.game.score += x
         self.update_score()
-        super().draw()
+
+    def update_score(self):
+        self.lbl_score.update_text("Score: {}".format(self.game.score))
 
 
 class Pacman(Creature):
@@ -114,45 +112,58 @@ class Pacman(Creature):
     def __init__(self, game: Game, x: int, y: int):
         super().__init__(game, x, y, (15, 15))
         self.move_cache = []
-        self.pressed_key = None
-        self.speed = 10
-        self.score = 0
+        self.speed = 1
+        self.steps_alive = 0
         self.look_forward = True
         self.look_vertical = False
 
     def act(self, e: pygame.event):
         if e.type == pygame.KEYDOWN:
-            if e.key in (119, 97, 115, 100) and self.pressed_key is None:
-                self.pressed_key = e.key
-                self.step()
-        if e.type == pygame.KEYUP:
-            if e.key in (119, 97, 115, 100) and self.pressed_key == e.key:
-                self.pressed_key = None
+            if e.key in (119, 97, 115, 100) and (self.move_cache == [] or self.move_cache[-1] != e.key) and len(
+                    self.move_cache) < 5:
+                self.move_cache.append(e.key)
 
     def step(self):
+        self.steps_alive += 1
         for e in self.may_collide_with(self.x, self.y):
             if isinstance(e, Seed):
-                self.score += e.score
                 e.eat()
-        if self.pressed_key is not None:
+        if len(self.move_cache):
             mx_c, my_c = 0, 0
-            if self.pressed_key == 119:
+            look_forward = self.look_forward
+            look_vertical = self.look_vertical
+            if len(self.move_cache) > 1:
+                if self.move_cache[1] == 119:
+                    my_c = -1
+                elif self.move_cache[1] == 97:
+                    mx_c = -1
+                elif self.move_cache[1] == 115:
+                    my_c = 1
+                elif self.move_cache[1] == 100:
+                    mx_c = 1
+                if self.can_move(self.speed * mx_c, self.speed * my_c):
+                    self.move_cache.pop(0)
+            mx_c, my_c = 0, 0
+            if self.move_cache[0] == 119:
                 my_c = -1
-                self.look_forward = self.look_vertical = True
-            elif self.pressed_key == 97:
+                look_forward = look_vertical = True
+            elif self.move_cache[0] == 97:
                 mx_c = -1
-                self.look_forward = self.look_vertical = False
-            elif self.pressed_key == 115:
+                look_forward = look_vertical = False
+            elif self.move_cache[0] == 115:
                 my_c = 1
-                self.look_forward = False
-                self.look_vertical = True
-            elif self.pressed_key == 100:
+                look_forward = False
+                look_vertical = True
+            elif self.move_cache[0] == 100:
                 mx_c = 1
-                self.look_forward = True
-                self.look_vertical = False
+                look_forward = True
+                look_vertical = False
             if not self.move(self.speed * mx_c, self.speed * my_c):
-                self.pressed_key = None
+                self.move_cache.pop(0)
                 self.step()
+            else:
+                self.look_forward = look_forward
+                self.look_vertical = look_vertical
 
     def draw(self):
         im = self.image
@@ -176,7 +187,7 @@ class Seed(Creature):
 
     def die(self):
         self.game.current_room.toDraw.remove(self)
-        self.game.score += self.score
+        self.game.current_room.change_score(self.score)
         super().die()
 
     def draw(self):
@@ -190,3 +201,11 @@ class FreeSpace(Drawable):
 
     def draw(self):
         pygame.draw.rect(self.game.screen, Color.BLACK, (self.x, self.y, 30, 30))
+        if None in self.game.current_room.map[self.y//30-1][self.x//30]:
+            pygame.draw.line(self.game.screen, Color.ORANGE, (self.x, self.y), (self.x+30, self.y), 4)
+        if None in self.game.current_room.map[self.y//30][self.x//30-1]:
+            pygame.draw.line(self.game.screen, Color.ORANGE, (self.x, self.y), (self.x, self.y+30), 4)
+        if self.y//30 < 23 and None in self.game.current_room.map[self.y//30+1][self.x//30]:
+            pygame.draw.line(self.game.screen, Color.ORANGE, (self.x, self.y+30), (self.x+30, self.y+30), 4)
+        if self.y//30 < 23 and self.x//30 < 27 and None in self.game.current_room.map[self.y//30][self.x//30+1]:
+            pygame.draw.line(self.game.screen, Color.ORANGE, (self.x+30, self.y), (self.x+30, self.y+30), 4)
