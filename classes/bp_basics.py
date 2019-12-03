@@ -84,7 +84,14 @@ class Room:
 
     def draw(self):
         for obj in self.toDraw:
-            obj.draw()
+            '''
+            это условие добавлено для обработки массива жизней пакмана paclives, остальные элементы обрабатываются напрямую
+            '''
+            if isinstance(obj, list):
+                for item in obj:
+                    item.draw()
+            else:
+                obj.draw()
 
 
 class Action:

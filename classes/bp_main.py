@@ -31,12 +31,14 @@ class Menu(Room):
 class MainField(Room):
     def __init__(self, game, prev_room: Room = None):
         super().__init__(game, prev_room)
-        self.lbl_score = Text(self.game, text="Score: {}".format(self.game.score), x=self.game.size[0] // 2 - 30, y=self.game.size[1] - 30)
-        back_text = Text(self.game, text="MAIN MENU", x=30, y=self.game.size[1] - 30)
-        back_btn = Button(self.game, back_text, Color.GREEN, Color.DARK_GREEN, Action(transit, game=self.game, room=prev_room))
-        self.toDraw += [back_text, back_btn, self.lbl_score]
-        game.background = Color.BLUE
+
+        # инициализация элементов поля
+        self.lbl_score = Text(self.game, text="Score: {}".format(self.game.score),
+                              x=self.game.size[0] // 2 - 30, y=self.game.size[1] - 30)
+        self.paclives = []  # для отрисовки жизней
+        self.draw_lives()
         self.map = [[list() for j in range(28)] for i in range(24)]
+        game.background = Color.BLUE
         field = [
             "############################",
             "#************##************#",
@@ -64,9 +66,19 @@ class MainField(Room):
             "############################",
         ]
         self.parse_field(field)
+        self.update_lives()
+
+        # инициализация элементов интерфейса взаимодействия с пользователем
+        back_text = Text(self.game, text="Main Menu", x=30, y=self.game.size[1] - 30)
+        back_btn = Button(self.game, back_text, Color.GREEN, Color.DARK_GREEN,
+                          Action(transit, game=self.game, room=prev_room))
+        self.toDraw += [back_text, back_btn, self.lbl_score]
+
+    def update_lives(self):
+        self.toDraw.append(self.paclives)
 
     def parse_field(self, field: list):
-        '''
+        """
         _ = можно ходить
         + или * = зерно
         @ = энерджайзер
@@ -77,7 +89,7 @@ class MainField(Room):
         $ = Packman Spawner
         < или > = Teleport (стрелка - направление переноса)
         # = стена (подразумевается)
-        '''
+        """
         teleports = {}
         for l, line in enumerate(field):
             for c, char in enumerate(line):
@@ -115,6 +127,19 @@ class MainField(Room):
 
     def update_score(self):
         self.lbl_score.update_text("Score: {}".format(self.game.score))
+
+    def draw_lives(self):
+        image = pygame.image.load("images/pacman_small.png")
+        shift = 35
+        for i in range(3):
+            life = Drawable(self.game, self.game.size[0] - shift, self.game.size[1] - 10, (15, 15))
+            life.image = image
+            shift += 35
+            self.paclives.append(life)
+
+    def remove_life(self):
+        if len(self.paclives):
+            self.paclives.pop()
 
 
 class Pacman(Creature):
@@ -201,6 +226,11 @@ class Seed(Creature):
     def die(self):
         self.game.current_room.toDraw.remove(self)
         self.game.current_room.change_score(self.score)
+
+        ''' для примера жизни пакмана уменьшаются при съедении зерна:'''
+        self.game.current_room.remove_life()
+        ''' '''
+
         super().die()
 
     def draw(self):
@@ -214,14 +244,15 @@ class FreeSpace(Drawable):
 
     def draw(self):
         pygame.draw.rect(self.game.screen, Color.BLACK, (self.x, self.y, 30, 30))
-        if None in self.game.current_room.map[self.y//30-1][self.x//30]:
-            pygame.draw.line(self.game.screen, Color.ORANGE, (self.x, self.y), (self.x+30, self.y), 4)
-        if None in self.game.current_room.map[self.y//30][self.x//30-1]:
-            pygame.draw.line(self.game.screen, Color.ORANGE, (self.x, self.y), (self.x, self.y+30), 4)
-        if self.y//30 < 23 and None in self.game.current_room.map[self.y//30+1][self.x//30]:
-            pygame.draw.line(self.game.screen, Color.ORANGE, (self.x, self.y+30), (self.x+30, self.y+30), 4)
-        if self.y//30 < 23 and self.x//30 < 27 and None in self.game.current_room.map[self.y//30][self.x//30+1]:
-            pygame.draw.line(self.game.screen, Color.ORANGE, (self.x+30, self.y), (self.x+30, self.y+30), 4)
+        if None in self.game.current_room.map[self.y // 30 - 1][self.x // 30]:
+            pygame.draw.line(self.game.screen, Color.ORANGE, (self.x, self.y), (self.x + 30, self.y), 4)
+        if None in self.game.current_room.map[self.y // 30][self.x // 30 - 1]:
+            pygame.draw.line(self.game.screen, Color.ORANGE, (self.x, self.y), (self.x, self.y + 30), 4)
+        if self.y // 30 < 23 and None in self.game.current_room.map[self.y // 30 + 1][self.x // 30]:
+            pygame.draw.line(self.game.screen, Color.ORANGE, (self.x, self.y + 30), (self.x + 30, self.y + 30), 4)
+        if self.y // 30 < 23 and self.x // 30 < 27 and None in self.game.current_room.map[self.y // 30][
+            self.x // 30 + 1]:
+            pygame.draw.line(self.game.screen, Color.ORANGE, (self.x + 30, self.y), (self.x + 30, self.y + 30), 4)
 
 
 class Teleport(Interactable):
