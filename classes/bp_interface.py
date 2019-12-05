@@ -25,8 +25,7 @@ class Text(Drawable):
         self.x, self.y = x, y
 
     def draw(self):
-        self.game.screen.fill(self.game.background, (self.game.size[0] // 2 - 30, self.game.size[1] - 30,
-                                                     self.get_size()[0], self.get_size()[1]))
+        self.game.screen.fill(self.game.current_room.background, (self.game.size[0] // 2 - 30, self.game.size[1] - 30,                                      self.get_size()[0], self.get_size()[1]))
         self.game.screen.blit(self.image, [self.x, self.y])
 
     def get_size(self):
@@ -53,8 +52,6 @@ class Button(Drawable):
                 self.position_y + self.height > mouse[1] > self.position_y:
             pygame.draw.rect(self.game_object.screen, self.active_color,
                              (self.position_x, self.position_y, self.width, self.height))
-            if click[0] == 1 and self.on_click is not None:
-                self.on_click.act()
         else:
             pygame.draw.rect(self.game_object.screen, self.inactive_color,
                              (self.position_x, self.position_y, self.width, self.height))
@@ -64,4 +61,9 @@ class Button(Drawable):
         pass
 
     def act(self, event):
-        pass
+        if event.type == pygame.MOUSEBUTTONUP\
+           and event.button == 1\
+           and self.position_x + self.width > event.pos[0] > self.position_x\
+           and self.position_y + self.height > event.pos[1] > self.position_y\
+           and self.on_click is not None:
+            self.on_click.act()

@@ -1,19 +1,16 @@
 import pygame
 from sys import exit
-from math import ceil
 from classes.Color_Scheme import *
 
 
 class Game:
     def __init__(self, w: int, h: int):
         pygame.init()
-        self.background = Color.BLACK
-        self.screen = None
         self.size = (w, h)
+        self.screen = pygame.display.set_mode(self.size)
         self.GameOver = False
         self.Paused = False
-        self.pause_resist = None
-        self.current_room = None
+        self.preload_room = self.current_room = None
         self.counter = 0
         self.score = 0
         self.pause_screen = pygame.Surface(self.size, pygame.SRCALPHA)
@@ -24,7 +21,7 @@ class Game:
             if e.type == pygame.QUIT:
                 self.GameOver = True
             if e.type == pygame.KEYUP and e.key == pygame.K_SPACE \
-                    and self.pause_resist is not self.current_room:
+               and self.current_room.pause_enabled:
                 if not self.Paused:
                     self.pause()
                 self.Paused = not self.Paused
@@ -36,20 +33,18 @@ class Game:
         pygame.display.flip()
 
     def start(self, s_room):
-        self.pause_resist = s_room
         self.current_room = s_room
         self.preload_room = s_room
-        self.screen = pygame.display.set_mode(self.size)
         while not self.GameOver:
             self.process_events()
             if not self.Paused:
                 #if not self.counter % 3:
                 self.current_room.step()
-                self.screen.fill(self.background)
+                self.screen.fill(self.current_room.background)
                 self.current_room.draw()
                 pygame.display.flip()
+                self.counter += 1
             self.current_room = self.preload_room
-            self.counter += 1
         quit()
 
     @staticmethod
@@ -65,10 +60,12 @@ class Room:
     Отвечает за их отрисовку и интерактивность.
     '''
 
-    def __init__(self, game: Game, prev_room = None, next_room = None):
+    def __init__(self, game: Game, prev_room=None, next_room=None, pause_enabled: bool = True):
         self.game = game
         self.prev_room = prev_room
         self.next_room = next_room
+        self.pause_enabled = pause_enabled
+        self.background = Color.BLACK
         # Сюда классы наследники добавляют объекты для отрисовки
         self.toDraw = []
         # А сюда для взаимодействия
@@ -134,6 +131,7 @@ class Creature(Interactable, Drawable):
         Interactable.__init__(self, game)
         self.game = game
         self.x, self.y = x, y
+        self.spawner = None
         self.is_alive = True
 
     def get_pos(self):
@@ -176,7 +174,7 @@ class Creature(Interactable, Drawable):
             return False
         if not self.offset[1] <= y <= self.game.size[1] - self.offset[1]:
             return False
-        if None in self.may_collide_with(x, y):
+        if True in self.may_collide_with(x, y):
             return False
         return True
 
@@ -197,17 +195,66 @@ class Creature(Interactable, Drawable):
 
 
 class Spawner(Interactable):
-    def __init__(self, game: Game, creature: Creature):
+    def __init__(self, game: Game, pos: (int, int), creature: Creature, delay: int = 0):
         super().__init__(game)
+        self.delay = delay
+        self.pos = pos
+        self.spawn_request_time = self.game.counter
         self.can_spawn = True
+        creature.spawner = self
         self.creature = creature
 
     def step(self):
-        if self.can_spawn:
+        if self.can_spawn and\
+           self.spawn_request_time+self.delay <= self.game.counter:
             self.can_spawn = False
-            self.creature.is_alive = True
+            self.creature.__init__(self.game, *self.pos)
+            self.creature.spawner = self
             self.game.current_room.toDraw.append(self.creature)
             self.game.current_room.eventListeners.append(self.creature)
 
-    def spawn(self):
+    def spawn(self, delay: int = 0):
+        self.delay = delay
+        self.spawn_request_time = self.game.counter
         self.can_spawn = True
+
+
+class Wall(Drawable):
+    line_width = 6
+    background = Color.BROWN
+    border_color = Color.BLUE
+    '''
+    Только отображение коридоров
+    '''
+    def __init__(self, game: Game, x: int = 0, y: int = 0):
+        super().__init__(game, x, y)
+        self.scr = pygame.Surface((30, 30))
+
+    def reconnect(self, map: None):
+        self.scr.fill(self.background)
+        up, down, right, left = [True] * 4
+        if not map:
+            map = self.game.current_room.map
+        if self.y > 0 and None in map[self.y // 30 - 1][self.x // 30]:
+            up = False
+            pygame.draw.line(self.scr, self.border_color, (0, self.line_width // 2 - 1), (30 - 1, self.line_width // 2 - 1), self.line_width)
+        if self.y // 30 < 23 and None in map[self.y // 30 + 1][self.x // 30]:
+            down = False
+            pygame.draw.line(self.scr, self.border_color, (0, 30 - self.line_width // 2 - 1), (30 - 1, 30 - self.line_width // 2 - 1), self.line_width)
+        if self.x // 30 < 27 and None in map[self.y // 30][self.x // 30 + 1]:
+            pygame.draw.line(self.scr, self.border_color, (30 - self.line_width // 2 - 1, 0), (30 - self.line_width // 2 - 1, 30 - 1), self.line_width)
+            right = False
+        if self.y > 0 and None in map[self.y // 30][self.x // 30 - 1]:
+            pygame.draw.line(self.scr, self.border_color, (self.line_width // 2 - 1, 0), (self.line_width // 2 - 1, 30 - 1), self.line_width)
+            left = False
+        if left and up and self.y > 0 and self.x > 0 and None in map[self.y // 30 - 1][self.x // 30 - 1]:
+            pygame.draw.circle(self.scr, self.border_color, (0, 0), self.line_width)
+        if right and down and self.y // 30 < 23 and self.x // 30 < 27 and None in map[self.y // 30 + 1][self.x // 30 + 1]:
+            pygame.draw.circle(self.scr, self.border_color, (30, 30), self.line_width)
+        if right and up and self.x // 30 < 27 and self.y > 0 and None in map[self.y // 30 - 1][self.x // 30 + 1]:
+            pygame.draw.circle(self.scr, self.border_color, (30, 0), self.line_width)
+        if left and down and self.y // 30 < 23 and self.x > 0 and None in map[self.y // 30 + 1][self.x // 30 - 1]:
+            pygame.draw.circle(self.scr, self.border_color, (0, 30), self.line_width)
+
+    def draw(self):
+        self.game.screen.blit(self.scr, (self.x, self.y))
