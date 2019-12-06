@@ -15,10 +15,10 @@ class Menu(Room):
         self.pause_enabled = False
         self.next_room = MainField(game, self)
         title = Text(game=self.game, text='BACK_PAC_MAN')
-        start_text = Text(self.game, text='START GAME', font_size = 20, color=Color.DARK_GREEN)
+        start_text = Text(self.game, text='START GAME', font_size=20, color=Color.DARK_GREEN)
         start_text_w, start_text_h = start_text.get_size()
         start_text.update_position(x=self.game.size[0] / 2 - start_text_w / 2, y=self.game.size[1] / 3)
-        end_text = Text(self.game, text='EXIT GAME', font_size = 20, color=Color.DARK_RED)
+        end_text = Text(self.game, text='EXIT GAME', font_size=20, color=Color.DARK_RED)
         end_text_w = end_text.get_size()[0]
         end_text.update_position(x=self.game.size[0] / 2 - end_text_w / 2, y=self.game.size[1] / 3 + start_text_h + 10)
 
@@ -123,22 +123,22 @@ class MainField(Room):
                     self.map[l][c].append(seed)
                     self.toDraw.append(seed)
                 elif char == 'P':
-                    spwn = Spawner(self.game, (c*30 + 15, l*30 + 15), Ghost(self.game))
+                    spwn = Spawner(self.game, (c * 30 + 15, l * 30 + 15), Ghost(self.game))
                     spwn.creature.image = spwn.creature.pinky
                     self.map[l][c].append(spwn)
                     self.eventListeners.append(spwn)
                 elif char == 'I':
-                    spwn = Spawner(self.game, (c*30 + 15, l*30 + 15), Ghost(self.game))
+                    spwn = Spawner(self.game, (c * 30 + 15, l * 30 + 15), Ghost(self.game))
                     spwn.creature.image = spwn.creature.inky
                     self.map[l][c].append(spwn)
                     self.eventListeners.append(spwn)
                 elif char == 'B':
-                    spwn = Spawner(self.game, (c*30 + 15, l*30 + 15), Ghost(self.game))
+                    spwn = Spawner(self.game, (c * 30 + 15, l * 30 + 15), Ghost(self.game))
                     spwn.creature.image = spwn.creature.blinky
                     self.map[l][c].append(spwn)
                     self.eventListeners.append(spwn)
                 elif char == 'C':
-                    spwn = Spawner(self.game, (c*30 + 15, l*30 + 15), Ghost(self.game))
+                    spwn = Spawner(self.game, (c * 30 + 15, l * 30 + 15), Ghost(self.game))
                     spwn.creature.image = spwn.creature.clyde
                     self.map[l][c].append(spwn)
                     self.eventListeners.append(spwn)
@@ -187,23 +187,31 @@ class DeathMessage(Room):
 
         record_text = Text(game=self.game, text='Your score is {}'.format(self.game.score))
         record_text_w, record_text_h = record_text.get_size()
-        record_text.update_position(self.game.size[0]/2 - record_text_w/2, y=self.game.size[1]/2 - record_text_h)
+        record_text.update_position(self.game.size[0] / 2 - record_text_w / 2, y=self.game.size[1] / 2 - record_text_h)
 
         start_text = Text(self.game, text='MAIN MENU', color=Color.DARK_GREEN)
         start_text_w, start_text_h = start_text.get_size()
-        start_text.update_position(self.game.size[0] / 2 - start_text_w / 2, y=self.game.size[1] - self.game.size[1]/3)
+        start_text.update_position(self.game.size[0] / 2 - start_text_w / 2,
+                                   y=self.game.size[1] - self.game.size[1] / 3)
+
+        replay_text = Text(self.game, text='Play again', color=Color.ORANGE)
+        replay_text_w, replay_text_h = replay_text.get_size()
+        replay_text.update_position(self.game.size[0] / 2 - replay_text_w / 2,
+                                    y=self.game.size[1] - self.game.size[1] / 3 + start_text_h + 10)
 
         end_text = Text(self.game, text='EXIT GAME', color=Color.DARK_RED)
         end_text_w = end_text.get_size()[0]
-        end_text.update_position(x=self.game.size[0] / 2 - end_text_w / 2, y=self.game.size[1] - self.game.size[1]/3 +
-                                                                             start_text_h + 10)
+        end_text.update_position(x=self.game.size[0] / 2 - end_text_w / 2, y=self.game.size[1] - self.game.size[1] / 3 +
+                                                                             start_text_h + replay_text_h + 20)
 
         menu_btn = Button(self.game, start_text, Color.BLACK, Color.DARK_GREEN,
                           Action(transit, game=self.game, room=Menu(self.game)))
+        replay_btn = Button(self.game, replay_text, Color.BLACK, Color.ORANGE,
+                            Action(transit, game=self.game, room=MainField(self.game)))
         exit_btn = Button(self.game, end_text, Color.BLACK, Color.DARK_RED, Action(quit))
 
-        self.toDraw += [title, menu_btn, exit_btn, record_text]
-        self.eventListeners += [exit_btn, menu_btn]
+        self.toDraw += [title, menu_btn, exit_btn, record_text, replay_text, replay_btn]
+        self.eventListeners += [exit_btn, menu_btn, replay_btn]
 
 
 class Pacman(Creature):
@@ -302,7 +310,7 @@ class Ghost(Creature):
 
     def step(self):
         pass
-    
+
 
 class Seed(Creature):
     def __init__(self, game: Game, x: int = 0, y: int = 0, score: int = 0, radius: int = 3):
@@ -311,8 +319,9 @@ class Seed(Creature):
         from random import randint
         self.g = randint(10, 100)
         sc = randint(15, 40)
-        delta = randint(1, 2) + randint(0, 1)*randint(0, 1)*randint(0, 1)*randint(0, 1)*randint(0, 1)*randint(0, 1)*randint(0, 1)
-        self.rad_frames = [i//sc for i in range(sc*(radius-delta), sc*(radius+delta))]
+        delta = randint(1, 2) + randint(0, 1) * randint(0, 1) * randint(0, 1) * randint(0, 1) * randint(0, 1) * randint(
+            0, 1) * randint(0, 1)
+        self.rad_frames = [i // sc for i in range(sc * (radius - delta), sc * (radius + delta))]
         self.rad_frames += reversed(self.rad_frames)
 
     def eat(self):
@@ -324,11 +333,11 @@ class Seed(Creature):
     def die(self):
         self.game.current_room.toDraw.remove(self)
         self.game.current_room.change_score(self.score)
-        self.game.current_room.map[self.y//30][self.x//30].remove(self)
+        self.game.current_room.map[self.y // 30][self.x // 30].remove(self)
         super().die()
 
     def draw(self):
-        r = int(self.rad_frames[(self.game.counter+self.g)%len(self.rad_frames)])
+        r = int(self.rad_frames[(self.game.counter + self.g) % len(self.rad_frames)])
         pygame.draw.circle(self.game.screen, Color.GREEN, (self.x, self.y), r)
 
 
