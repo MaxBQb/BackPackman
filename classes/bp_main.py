@@ -37,6 +37,7 @@ class MainField(Room):
         self.lbl_score = Text(self.game, text="Score: {}".format(self.game.score))
         self.center_score_text()
         self.paclives = []  # для отрисовки жизней
+        self.ghosts = [] # для призраков
         self.draw_lives()
         self.map = [[list() for j in range(28)] for i in range(24)]
         field = [
@@ -127,21 +128,25 @@ class MainField(Room):
                     spwn.creature.image = spwn.creature.pinky
                     self.map[l][c].append(spwn)
                     self.eventListeners.append(spwn)
+                    self.ghosts.append(spwn)
                 elif char == 'I':
                     spwn = Spawner(self.game, (c * 30 + 15, l * 30 + 15), Ghost(self.game))
                     spwn.creature.image = spwn.creature.inky
                     self.map[l][c].append(spwn)
                     self.eventListeners.append(spwn)
+                    self.ghosts.append(spwn)
                 elif char == 'B':
                     spwn = Spawner(self.game, (c * 30 + 15, l * 30 + 15), Ghost(self.game))
                     spwn.creature.image = spwn.creature.blinky
                     self.map[l][c].append(spwn)
                     self.eventListeners.append(spwn)
+                    self.ghosts.append(spwn)
                 elif char == 'C':
                     spwn = Spawner(self.game, (c * 30 + 15, l * 30 + 15), Ghost(self.game))
                     spwn.creature.image = spwn.creature.clyde
                     self.map[l][c].append(spwn)
                     self.eventListeners.append(spwn)
+                    self.ghosts.append(spwn)
         for t in teleports.values():
             if len(t) == 2:
                 t[0].connect(t[1])
@@ -235,10 +240,25 @@ class Pacman(Creature):
         self.steps_alive += 1
         for e in self.may_collide_with(self.x, self.y):
             if isinstance(e, Seed):
+                '''
+                Если съел энерджайзер, призраки становятся уязвимыми
+                '''
+                if e.score == 10:
+                    for g in self.game.current_room.ghosts:
+                        g.creature.vulnerable_mode()
+                    e.eat()
                 e.eat()
+
+                '''
+                Поединок с призраком
+                '''
             elif isinstance(e, Spawner) and isinstance(e.creature, Ghost):
-                self.die()
-                return
+                if e.creature.vulnerable:
+                    e.creature.die()
+                else:
+                    self.die()
+                    return
+
             if isinstance(e, Teleport):
                 e.apply(self)
         if len(self.move_cache):
@@ -304,12 +324,28 @@ class Ghost(Creature):
     inky = pygame.image.load("images/blue.png")
     blinky = pygame.image.load("images/red.png")
     clyde = pygame.image.load("images/yellow.png")
+    vuln = pygame.image.load("images/vuln.png")
+    dead = pygame.image.load("images/eyes.png")
 
     def __init__(self, game: Game, x: int = 0, y: int = 0):
         super().__init__(game, x, y, (15, 15))
+        self.vulnerable = False
 
     def step(self):
         pass
+
+    def vulnerable_mode(self):
+        image_cache = self.image
+        self.vulnerable = True
+        self.game.current_room.toDraw.remove(self)
+        self.image = self.vuln
+        self.game.current_room.toDraw.append(self)
+
+    def die(self):
+        image_cache = self.image
+        self.game.current_room.toDraw.remove(self)
+        self.image = self.dead
+        self.game.current_room.toDraw.append(self)
 
 
 class Seed(Creature):
