@@ -228,33 +228,73 @@ class Wall(Drawable):
     '''
     def __init__(self, game: Game, x: int = 0, y: int = 0):
         super().__init__(game, x, y)
-        self.scr = pygame.Surface((30, 30))
+        self.scr = pygame.Surface((30, 30), pygame.SRCALPHA)
 
     def reconnect(self, map: None):
         self.scr.fill(self.background)
         up, down, right, left = [True] * 4
         if not map:
             map = self.game.current_room.map
-        if self.y > 0 and None in map[self.y // 30 - 1][self.x // 30]:
-            up = False
-            pygame.draw.line(self.scr, self.border_color, (0, self.line_width // 2 - 1), (30 - 1, self.line_width // 2 - 1), self.line_width)
-        if self.y // 30 < 23 and None in map[self.y // 30 + 1][self.x // 30]:
-            down = False
-            pygame.draw.line(self.scr, self.border_color, (0, 30 - self.line_width // 2 - 1), (30 - 1, 30 - self.line_width // 2 - 1), self.line_width)
-        if self.x // 30 < 27 and None in map[self.y // 30][self.x // 30 + 1]:
-            pygame.draw.line(self.scr, self.border_color, (30 - self.line_width // 2 - 1, 0), (30 - self.line_width // 2 - 1, 30 - 1), self.line_width)
-            right = False
-        if self.y > 0 and None in map[self.y // 30][self.x // 30 - 1]:
-            pygame.draw.line(self.scr, self.border_color, (self.line_width // 2 - 1, 0), (self.line_width // 2 - 1, 30 - 1), self.line_width)
-            left = False
-        if left and up and self.y > 0 and self.x > 0 and None in map[self.y // 30 - 1][self.x // 30 - 1]:
+        ''' [ul] [uc] [ur]
+            [ml] [<>] [mr]
+            [dl] [dc] [dr]
+        '''
+        # up
+        ul = True in map[self.y // 30 - 1][self.x // 30 - 1] if self.y > 0 and self.x > 0 else None
+        uc = True in map[self.y // 30 - 1][self.x // 30] if self.y > 0 else None
+        ur = True in map[self.y // 30 - 1][self.x // 30 + 1] if self.y > 0 and self.x//30 < 27 else None
+        # middle
+        ml = True in map[self.y // 30][self.x // 30 - 1] if self.x > 0 else None
+        mr = True in map[self.y // 30][self.x // 30 + 1] if self.x // 30 < 27 else None
+        # down
+        dl = True in map[self.y // 30 + 1][self.x // 30 - 1] if self.y // 30 < 23 and self.x > 0 else None
+        dc = True in map[self.y // 30 + 1][self.x // 30] if self.y // 30 < 23 else None
+        dr = True in map[self.y // 30 + 1][self.x // 30 + 1] if self.y // 30 < 23 and self.x//30 < 27 else None
+        v_start = self.line_width - 1
+        v_end = 30 - v_start - 2
+        h_start = self.line_width - 1
+        h_end = 30 - h_start - 2
+        if uc != False:
+            h_start = 0
+        if dc != False:
+            h_end = 30-1
+        if ml != False:
+            v_start = 0
+        if mr != False:
+            v_end = 30-1
+        '''
+        Void: False
+        Field end: None
+        Wall: True
+        '''
+        # Borders
+        if uc is False:
+            pygame.draw.line(self.scr, self.border_color, (v_start, self.line_width//2 - 1), (v_end, self.line_width//2 - 1), self.line_width)
+        if ml is False:
+            pygame.draw.line(self.scr, self.border_color, (self.line_width//2 - 1, h_start), (self.line_width//2 - 1, h_end), self.line_width)
+        if mr is False:
+            pygame.draw.line(self.scr, self.border_color, (30 - self.line_width//2 - 1, h_start), (30 - self.line_width//2 - 1, h_end), self.line_width)
+        if dc is False:
+            pygame.draw.line(self.scr, self.border_color, (v_start, 30 - self.line_width//2 - 1), (v_end, 30 - self.line_width//2 - 1), self.line_width)
+        # Inner rounds
+        if ul is False and uc and ml:
             pygame.draw.circle(self.scr, self.border_color, (0, 0), self.line_width)
-        if right and down and self.y // 30 < 23 and self.x // 30 < 27 and None in map[self.y // 30 + 1][self.x // 30 + 1]:
-            pygame.draw.circle(self.scr, self.border_color, (30, 30), self.line_width)
-        if right and up and self.x // 30 < 27 and self.y > 0 and None in map[self.y // 30 - 1][self.x // 30 + 1]:
+        if ur is False and uc and mr:
             pygame.draw.circle(self.scr, self.border_color, (30, 0), self.line_width)
-        if left and down and self.y // 30 < 23 and self.x > 0 and None in map[self.y // 30 + 1][self.x // 30 - 1]:
+        if dl is False and dc and ml:
             pygame.draw.circle(self.scr, self.border_color, (0, 30), self.line_width)
+        if dr is False and dc and mr:
+            pygame.draw.circle(self.scr, self.border_color, (30, 30), self.line_width)
+        # Outer rounds
+        if uc is False and ml is False:
+            pygame.draw.circle(self.scr, self.border_color, (self.line_width, self.line_width), self.line_width)
+        if uc is False and mr is False:
+            pygame.draw.circle(self.scr, self.border_color, (30 - self.line_width, self.line_width), self.line_width)
+        if dc is False and ml is False:
+            pygame.draw.circle(self.scr, self.border_color, (self.line_width, 30 - self.line_width), self.line_width)
+        if dc is False and mr is False:
+            pygame.draw.circle(self.scr, self.border_color, (30 - self.line_width, 30 - self.line_width), self.line_width)
+        pygame.draw.rect(self.scr, self.background, (self.line_width, self.line_width, 30-self.line_width*2, 30-self.line_width*2))
 
     def draw(self):
         self.game.screen.blit(self.scr, (self.x, self.y))
