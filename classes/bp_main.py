@@ -50,11 +50,11 @@ class MainField(Room):
             "######*#####_##_#####*######",
             "_____#*##__________##*#_____",
             "_____#*##_###__###_##*#_____",
-            "######*##_#_HIPH_#_##*######",
+            "######*##_#_HIHH_#_##*######",
             ">_____*___#_HCBH_#___*_____<",
             "######*##_#_HHHH_#_##*######",
             "_____#*##_########_##*#_____",
-            "_____#*##____$_____##*#_____",
+            "_____#*##____$____P##*#_____",
             "######*##_########_##*######",
             "#************##************#",
             "#*####*#####*##*#####*####*#",
@@ -122,6 +122,26 @@ class MainField(Room):
                         seed = Seed(self.game, c * 30 + 15, l * 30 + 15, 10, 8)
                     self.map[l][c].append(seed)
                     self.toDraw.append(seed)
+                elif char == 'P':
+                    spwn = Spawner(self.game, (c*30 + 15, l*30 + 15), Ghost(self.game))
+                    spwn.creature.image = spwn.creature.pinky
+                    self.map[l][c].append(spwn)
+                    self.eventListeners.append(spwn)
+                elif char == 'I':
+                    spwn = Spawner(self.game, (c*30 + 15, l*30 + 15), Ghost(self.game))
+                    spwn.creature.image = spwn.creature.inky
+                    self.map[l][c].append(spwn)
+                    self.eventListeners.append(spwn)
+                elif char == 'B':
+                    spwn = Spawner(self.game, (c*30 + 15, l*30 + 15), Ghost(self.game))
+                    spwn.creature.image = spwn.creature.blinky
+                    self.map[l][c].append(spwn)
+                    self.eventListeners.append(spwn)
+                elif char == 'C':
+                    spwn = Spawner(self.game, (c*30 + 15, l*30 + 15), Ghost(self.game))
+                    spwn.creature.image = spwn.creature.clyde
+                    self.map[l][c].append(spwn)
+                    self.eventListeners.append(spwn)
         for t in teleports.values():
             if len(t) == 2:
                 t[0].connect(t[1])
@@ -208,7 +228,7 @@ class Pacman(Creature):
         for e in self.may_collide_with(self.x, self.y):
             if isinstance(e, Seed):
                 e.eat()
-                # для примера жизни пакмана уменьшаются при съедении зерна:
+            elif isinstance(e, Spawner) and isinstance(e.creature, Ghost):
                 self.die()
                 return
             if isinstance(e, Teleport):
@@ -270,6 +290,19 @@ class Pacman(Creature):
         Drawable.draw(self)
         self.image = im
 
+
+class Ghost(Creature):
+    pinky = pygame.image.load("images/pink.png")
+    inky = pygame.image.load("images/blue.png")
+    blinky = pygame.image.load("images/red.png")
+    clyde = pygame.image.load("images/yellow.png")
+
+    def __init__(self, game: Game, x: int = 0, y: int = 0):
+        super().__init__(game, x, y, (15, 15))
+
+    def step(self):
+        pass
+    
 
 class Seed(Creature):
     def __init__(self, game: Game, x: int = 0, y: int = 0, score: int = 0, radius: int = 3):
