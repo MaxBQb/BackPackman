@@ -221,7 +221,7 @@ class Spawner(Interactable):
 
 class Wall(Drawable):
     line_width = 6
-    background = Color.BROWN
+    background = Color.BLACK
     border_color = Color.BLUE
     '''
     Только отображение коридоров

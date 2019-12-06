@@ -15,16 +15,16 @@ class Menu(Room):
         self.pause_enabled = False
         self.next_room = MainField(game, self)
         title = Text(game=self.game, text='BACK_PAC_MAN')
-        start_text = Text(self.game, text='START GAME')
+        start_text = Text(self.game, text='START GAME', font_size = 20, color=Color.DARK_GREEN)
         start_text_w, start_text_h = start_text.get_size()
         start_text.update_position(x=self.game.size[0] / 2 - start_text_w / 2, y=self.game.size[1] / 3)
-        end_text = Text(self.game, text='EXIT GAME')
+        end_text = Text(self.game, text='EXIT GAME', font_size = 20, color=Color.DARK_RED)
         end_text_w = end_text.get_size()[0]
         end_text.update_position(x=self.game.size[0] / 2 - end_text_w / 2, y=self.game.size[1] / 3 + start_text_h + 10)
 
-        start_btn = Button(self.game, start_text, Color.GREEN, Color.DARK_GREEN,
+        start_btn = Button(self.game, start_text, Color.BLACK, Color.DARK_GREEN,
                            Action(transit, game=self.game, room=self.next_room))
-        exit_btn = Button(self.game, end_text, Color.RED, Color.DARK_RED, Action(quit))
+        exit_btn = Button(self.game, end_text, Color.BLACK, Color.DARK_RED, Action(quit))
         self.toDraw += [title, start_btn, exit_btn]
         self.eventListeners += [exit_btn, start_btn]
 
@@ -34,8 +34,8 @@ class MainField(Room):
         super().__init__(game, prev_room)
 
         # инициализация элементов поля
-        self.lbl_score = Text(self.game, text="Score: {}".format(self.game.score),
-                              x=self.game.size[0] // 2 - 30, y=self.game.size[1] - 30)
+        self.lbl_score = Text(self.game, text="Score: {}".format(self.game.score))
+        self.center_score_text()
         self.paclives = []  # для отрисовки жизней
         self.draw_lives()
         self.map = [[list() for j in range(28)] for i in range(24)]
@@ -69,11 +69,15 @@ class MainField(Room):
         self.update_lives()
 
         # инициализация элементов интерфейса взаимодействия с пользователем
-        back_text = Text(self.game, text="Main Menu", x=30, y=self.game.size[1] - 30)
-        back_btn = Button(self.game, back_text, Color.GREEN, Color.DARK_GREEN,
+        back_text = Text(self.game, text="Main Menu", x=30, y=self.game.size[1] - 30, color=Color.DARK_GREEN)
+        back_btn = Button(self.game, back_text, Color.BLACK, Color.DARK_GREEN,
                           Action(transit, game=self.game, room=prev_room))
         self.toDraw += [back_btn, self.lbl_score]
         self.eventListeners += [back_btn]
+
+    def center_score_text(self):
+        w = self.lbl_score.get_size()[0]
+        self.lbl_score.update_position(x=self.game.size[0] // 2 - w / 2, y=self.game.size[1] - 30)
 
     def update_lives(self):
         self.toDraw.append(self.paclives)
@@ -158,19 +162,27 @@ class DeathMessage(Room):
         super().__init__(game)
         self.pause_enabled = False
         title = Text(game=self.game, text='GAME OVER', font_size=36, color=Color.GREEN)
-        start_text = Text(self.game, text='MAIN MENU')
-        start_text_w, start_text_h = start_text.get_size()
         s_title = title.get_size()
         title.update_position(self.game.size[0] / 2 - s_title[0] / 2, y=self.game.size[1] / 5)
-        start_text.update_position(self.game.size[0] / 2 - start_text_w / 2, y=self.game.size[1] / 3)
-        end_text = Text(self.game, text='EXIT GAME')
-        end_text_w = end_text.get_size()[0]
-        end_text.update_position(x=self.game.size[0] / 2 - end_text_w / 2, y=self.game.size[1] / 3 + start_text_h + 10)
 
-        menu_btn = Button(self.game, start_text, Color.GREEN, Color.DARK_GREEN,
+        record_text = Text(game=self.game, text='Your score is {}'.format(self.game.score))
+        record_text_w, record_text_h = record_text.get_size()
+        record_text.update_position(self.game.size[0]/2 - record_text_w/2, y=self.game.size[1]/2 - record_text_h)
+
+        start_text = Text(self.game, text='MAIN MENU', color=Color.DARK_GREEN)
+        start_text_w, start_text_h = start_text.get_size()
+        start_text.update_position(self.game.size[0] / 2 - start_text_w / 2, y=self.game.size[1] - self.game.size[1]/3)
+
+        end_text = Text(self.game, text='EXIT GAME', color=Color.DARK_RED)
+        end_text_w = end_text.get_size()[0]
+        end_text.update_position(x=self.game.size[0] / 2 - end_text_w / 2, y=self.game.size[1] - self.game.size[1]/3 +
+                                                                             start_text_h + 10)
+
+        menu_btn = Button(self.game, start_text, Color.BLACK, Color.DARK_GREEN,
                           Action(transit, game=self.game, room=Menu(self.game)))
-        exit_btn = Button(self.game, end_text, Color.RED, Color.DARK_RED, Action(quit))
-        self.toDraw += [title, menu_btn, exit_btn]
+        exit_btn = Button(self.game, end_text, Color.BLACK, Color.DARK_RED, Action(quit))
+
+        self.toDraw += [title, menu_btn, exit_btn, record_text]
         self.eventListeners += [exit_btn, menu_btn]
 
 
