@@ -33,7 +33,7 @@ class Game:
         self.records = Records("hight_scores.txt")
         self.records.read()
         self.pause_screen = pygame.Surface(self.size, pygame.SRCALPHA)
-        self.pause_screen.fill((0, 0, 0, 200))
+        self.pause_screen.fill((0, 0, 0, 160))
 
     def process_events(self):
         for e in pygame.event.get():
@@ -214,22 +214,26 @@ class Creature(Drawable):
             collisions += self.game.current_room.map[pos_y + 1][pos_x + 1]
         return collisions
 
-    def can_set(self, x: int, y: int) -> bool:
+    def can_set(self, x: int, y: int, avalanche: bool = False) -> bool:
         if not self.offset[0] <= x <= self.game.size[0] - self.offset[0]:
             return False
         if not self.offset[1] <= y <= self.game.size[1] - self.offset[1]:
             return False
-        coolisions = self.may_collide_with(x, y) + \
+        collisions = self.may_collide_with(x, y) + \
                      self.dynamic_collision_test(x, y, self.dynamic_coll_check)
-        return self.collide(coolisions)
+        if avalanche:
+            for c in collisions:
+                if isinstance(c, Creature):
+                    c.collide(collisions+[self])
+        return self.collide(collisions, avalanche)
 
     def set_pos(self, x, y) -> bool:
-        if self.can_set(x, y):
+        if self.can_set(x, y, True):
             self.x, self.y = x, y
             return True
         return False
 
-    def collide(self, others) -> bool:
+    def collide(self, others, react: bool = True) -> bool:
         if True in others:
             return False
         return True
@@ -237,8 +241,8 @@ class Creature(Drawable):
     def move(self, x: int, y: int) -> bool:
         return self.set_pos(self.x + x, self.y + y)
 
-    def can_move(self, x: int, y: int) -> bool:
-        return self.can_set(self.x + x, self.y + y)
+    def can_move(self, x: int, y: int, avalanche: bool = False) -> bool:
+        return self.can_set(self.x + x, self.y + y, avalanche)
 
     def creation(self):
         self.is_alive = True
@@ -269,3 +273,35 @@ class Records:
     def add(self, score: int):
         self.stats.append(score)
         self.stats = sorted(self.stats, reverse=True)[:10]
+
+
+class Graph:
+    def __init__(self):
+        self.neighbors = []
+
+    def connect(self, other, both: bool = True):
+        if not isinstance(other, Graph):
+            raise TypeError(f"Cannot connect {self.__class__} and {other.__class__}")
+        self.neighbors.append(other)
+        if both:
+            other.neighbors.append(self)
+
+
+class Path:
+    def __init__(self, mmap: list):
+        n = len(mmap)
+        m = len(mmap[0])
+        # Void graph
+
+        self.map = [[Graph() for _ in range(m)] for i in range(n)]
+        for i in range(n):
+            for j in range(m):
+                if None in mmap[i][j]:
+                    if i > 0 and None in mmap[i-1][j]:
+                        self.map[i][j].connect(self.map[i-1][j])
+                    if j > 0 and None in mmap[i][j-1]:
+                        self.map[i][j].connect(self.map[i][j-1])
+                    if i < n-1 and None in mmap[i+1][j]:
+                        self.map[i][j].connect(self.map[i+1][j])
+                    if j > m-1 and None in mmap[i][j+1]:
+                        self.map[i][j].connect(self.map[i][j+1])

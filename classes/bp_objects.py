@@ -1,6 +1,7 @@
 from classes.bp_basics import *
 from classes.Color_Scheme import *
 from classes import bp_rooms as rooms
+from random import randint, choice
 
 
 class Pacman(Creature):
@@ -9,8 +10,8 @@ class Pacman(Creature):
     def __init__(self, game: Game, x: int = 0, y: int = 0):
         super().__init__(game, x, y, (15, 15))
         self.move_cache = []
-        self.speed = 1
-        self.steps_alive = 0
+        self.speed = 2
+        self.passive = True
         self.look_forward = True
         self.look_vertical = False
 
@@ -23,23 +24,30 @@ class Pacman(Creature):
                 self.move_cache.append(e.key)
 
     def step(self):
-        self.steps_alive += 1
+        # May move
+        '''       [mmu]
+                   ||
+            [mml] <--> [mmr]
+                   ||
+                  [mmd]
+        '''
+        mmu = self.can_move(0, -self.speed)
+        mmd = self.can_move(0, self.speed)
+        mml = self.can_move(-self.speed, 0)
+        mmr = self.can_move(self.speed, 0)
+
         if len(self.move_cache):
+            self.passive = False
             mx_c, my_c = 0, 0
             look_forward = self.look_forward
             look_vertical = self.look_vertical
-            if len(self.move_cache) > 1:
-                if self.move_cache[0] != 115 and self.move_cache[1] == 119:
-                    my_c = -1
-                elif self.move_cache[0] != 100 and self.move_cache[1] == 97:
-                    mx_c = -1
-                elif self.move_cache[0] != 119 and self.move_cache[1] == 115:
-                    my_c = 1
-                elif self.move_cache[0] != 97 and self.move_cache[1] == 100:
-                    mx_c = 1
-                if (mx_c or my_c) and self.can_move(self.speed * mx_c, self.speed * my_c):
-                    self.move_cache.pop(0)
-            mx_c, my_c = 0, 0
+            if len(self.move_cache) > 1 and (\
+               (self.move_cache[0] != 115 and self.move_cache[1] == 119 and mmu) or\
+               (self.move_cache[0] != 119 and self.move_cache[1] == 115 and mmd) or\
+               (self.move_cache[0] != 100 and self.move_cache[1] == 97 and mml) or\
+               (self.move_cache[0] != 97 and self.move_cache[1] == 100 and mmr)):
+                self.move_cache.pop(0)
+
             if self.move_cache[0] == 119:
                 my_c = -1
                 look_forward = look_vertical = True
@@ -60,34 +68,49 @@ class Pacman(Creature):
             else:
                 self.look_forward = look_forward
                 self.look_vertical = look_vertical
+        elif not self.passive:
+            self.passive = True
+            if mmr and mmd and not mml and not mmu:
+                self.look_vertical = not self.look_vertical
+            if mml and mmd and not mmr and not mmu:
+                self.look_vertical = not self.look_vertical
+                self.look_forward = not self.look_forward
+            if mmr and mmu and not mml and not mmd:
+                self.look_vertical = not self.look_vertical
+                self.look_forward = not self.look_forward
+            if mml and mmu and not mmr and not mmd:
+                self.look_vertical = not self.look_vertical
 
-    def collide(self, others) -> bool:
+    def collide(self, others, react: bool = True) -> bool:
         if not super().collide(others):
             return False
         for e in others:
             if isinstance(e, EctoWall):
                 return False
-            elif isinstance(e, Seed):
+            elif isinstance(e, Seed) and react:
                 # Если съел энерджайзер, призраки становятся уязвимыми
                 e.eat()
-            elif isinstance(e, Ghost):
-                if e.vulnerable:
-                    e.die()
-                else:
-                    self.die()
-            elif isinstance(e, Teleport):
+            elif isinstance(e, Ghost) and react:
+                if e.is_alive:
+                    if e.vulnerable:
+                        e.die()
+                    else:
+                        self.die()
+            elif isinstance(e, Teleport) and react:
                 e.apply(self)
         return True
 
     def creation(self):
         self.move_cache = []
-        self.speed = 1
-        self.steps_alive = 0
+        self.speed = 2
         self.look_forward = True
         self.dynamic_coll_check = self.game.current_room.ghosts
         self.look_vertical = False
+        super().creation()
 
     def die(self):
+        if not self.is_alive:
+            return
         self.game.current_room.remove_life()
         self.game.current_room.toDraw.remove(self)
         self.game.current_room.eventListeners.remove(self)
@@ -117,11 +140,14 @@ class Ghost(Creature):
     vuln = pygame.image.load("images/vuln.png")
     dead = pygame.image.load("images/eyes.png")
     eye_dist = 5 # Растояние от глаза до середины
+    directions = [(0, -1), (-1, 0), (0, 1), (1, 0)]
 
     def __init__(self, game: Game, x: int = 0, y: int = 0):
         super().__init__(game, x, y, (15, 15))
         self.vulnerable = False
         self.vulnerable_begin = 0
+        self.direction = 0
+        self.speed = 1
         self.target_pos = (self.x, self.y)
         self.image_cache = self.image # Чтоб не None
         self.avaliable_places = []
@@ -131,9 +157,29 @@ class Ghost(Creature):
            self.vulnerable_begin+self.vulnerable_steps <= self.game.counter:
             self.image = self.image_cache
             self.vulnerable = False
-        from random import choice
-        if not self.game.counter % 120:
-            self.target_pos = choice(self.avaliable_places)
+        ''' Directions is clockwise
+                 [up 0]
+            [left 1] [right 3]
+                 [down 2]
+        '''
+        if not self.game.counter%480 or not randint(0, 65):
+            tmpd = randint(0, 3)
+            # Попытка сменить направление под прямым углом
+            if tmpd % 2 == self.direction % 2:
+                tmpd = (tmpd+1)%4
+            mx_c, my_c = self.directions[tmpd]
+            if self.can_move(self.speed * mx_c, self.speed * my_c):
+                self.direction = tmpd
+        mx_c, my_c = self.directions[self.direction]
+        if not self.move(self.speed * mx_c, self.speed * my_c):
+            tmpd = self.direction
+            self.direction = randint(0, 3)
+            if self.direction == tmpd:
+                self.direction = randint(0, 3)
+            if self.direction == tmpd:
+                self.direction = randint(0, 3)
+            self.step()
+        self.target_pos = pygame.mouse.get_pos()
 
     def vulnerable_mode(self):
         if not self.vulnerable:
@@ -144,6 +190,7 @@ class Ghost(Creature):
 
     def creation(self):
         self.vulnerable = False
+        self.dynamic_coll_check = [self.game.current_room.pacman]
         self.target_pos = (self.x, self.y)
         self.image_cache = self.image  # Чтоб не None
         self.avaliable_places = []
@@ -151,6 +198,7 @@ class Ghost(Creature):
             for j in range(len(self.game.current_room.map[i])):
                 if None in self.game.current_room.map[i][j]:
                     self.avaliable_places += [(j * 30 + 15, i * 30 + 15)]
+        self.direction = randint(0, 3)
 
     def die(self):
         self.image_cache = self.image
@@ -160,18 +208,28 @@ class Ghost(Creature):
     def draw(self):
         if self.is_alive:
             super().draw()
-        #self.target_pos
-        pygame.draw.circle(self.game.screen, Color.WHITE, (self.x-self.eye_dist, self.y), 3)
-        pygame.draw.circle(self.game.screen, Color.WHITE, (self.x+self.eye_dist, self.y), 3)
-        pygame.draw.circle(self.game.screen, Color.BLACK, (self.x-self.eye_dist, self.y), 1)
-        pygame.draw.circle(self.game.screen, Color.BLACK, (self.x+self.eye_dist, self.y), 1)
+            eyecolor = Color.WHITE
+        else:
+            eyecolor = Color.LIGHT_BLUE
+        eye_xc, eye_yc = 0, 0
+        if self.x > self.target_pos[0]:
+            eye_xc = 1
+        elif self.x < self.target_pos[0]:
+            eye_xc = -1
+        if self.y > self.target_pos[1]:
+            eye_yc = 1
+        elif self.y < self.target_pos[1]:
+            eye_yc = -1
+        pygame.draw.circle(self.game.screen, eyecolor, (self.x-self.eye_dist, self.y), 3)
+        pygame.draw.circle(self.game.screen, eyecolor, (self.x+self.eye_dist, self.y), 3)
+        pygame.draw.circle(self.game.screen, Color.DARK_RED, (self.x-self.eye_dist+eye_xc, self.y+eye_yc), 1)
+        pygame.draw.circle(self.game.screen, Color.DARK_RED, (self.x+self.eye_dist+eye_xc, self.y+eye_yc), 1)
 
 
 class Seed(Creature):
     def __init__(self, game: Game, x: int = 0, y: int = 0, score: int = 0, radius: int = 3):
         super().__init__(game, x, y, (radius, radius))
         self.radius, self.score = radius, score
-        from random import randint
         self.g = randint(10, 100)
         sc = randint(15, 40)
         delta = randint(1, 2) + randint(0, 1) * randint(0, 1) * randint(0, 1) * randint(0, 1) * randint(0, 1) * randint(
@@ -202,7 +260,7 @@ class Seed(Creature):
 class Energizer(Seed):
     def die(self):
         for g in self.game.current_room.ghosts:
-            g.creature.vulnerable_mode()
+            g.vulnerable_mode()
         super().die()
 
 

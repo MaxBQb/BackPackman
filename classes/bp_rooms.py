@@ -22,7 +22,7 @@ class Menu(Room):
         end_text = Text(self.game, text='EXIT GAME', font_size=20, color=Color.DARK_RED, pos=(self.game.size[0] // 2, self.game.size[1] // 3 + 45), centrate=(True, True))
         start_btn = Button(self.game, self.start_text, Color.BLACK, Color.DARK_GREEN,
                            Action(transit, game=self.game, room=self.next_room))
-        exit_btn = Button(self.game, end_text, Color.BLACK, Color.DARK_RED, Action(quit))
+        exit_btn = Button(self.game, end_text, Color.BLACK, Color.DARK_RED, Action(self.game.quit))
         self.toDraw += [title, start_btn, exit_btn]
         self.eventListeners += [exit_btn, start_btn]
 
@@ -34,8 +34,10 @@ class MainField(Room):
         self.lbl_score = Text(self.game, text="Score: {}".format(self.game.score), pos=(self.game.size[0] // 2, self.game.size[1] - 30), centrate=(True, False))
         self.paclives = []  # для отрисовки жизней
         self.ghosts = [] # для призраков
+        self.pacman = None
         self.seeds_count = 0
         self.draw_lives()
+        self.path = None
         self.map = [[list() for j in range(28)] for i in range(24)]
         field = [
             "############################",
@@ -46,14 +48,14 @@ class MainField(Room):
             "#*####*##*########*##*####*#",
             "#******##****##****##******#",
             "######*#####_##_#####*######",
-            "_____#*##__________##*#_____",
-            "_____#*##_###--###_##*#_____",
-            "######*##_#_HIHH_#_##*######",
-            ">_____*___#_HCBH_#___*_____<",
-            "######*##_#_HHHH_#_##*######",
-            "_____#*##_########_##*#_____",
-            "_____#*##____$____P##*#_____",
-            "######*##_########_##*######",
+            "_____#*#####_##_#####*#_____",
+            "_____#*###________###*#_____",
+            "######*###_##--##_###*######",
+            ">_____*____#BIPC#____*_____<",
+            "######*###_######_###*######",
+            "_____#*###___$____###*#_____",
+            "_____#*###_######_###*#_____",
+            "######*###_######_###*######",
             "#************##************#",
             "#*####*#####*##*#####*####*#",
             "#+**##****************##**+#",
@@ -102,6 +104,7 @@ class MainField(Room):
                     self.map[l][c].append(None)
                 if char == '$':
                     spwn = Spawner(self.game, (c * 30 + 15, l * 30 + 15), Pacman(self.game))
+                    self.pacman = spwn.creature
                     self.map[l][c].append(spwn)
                     self.eventListeners.append(spwn)
                 elif char in '<>':
@@ -164,6 +167,7 @@ class MainField(Room):
 
     def creation(self):
         self.prev_room.start_text.update_text('RESUME')
+        self.path = Path(self.map)
         super().creation()
 
 
