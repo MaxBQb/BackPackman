@@ -41,7 +41,7 @@ class Text(Drawable):
 
 
 class Button(Drawable):
-    def __init__(self, game_object: Game, text_object: Text, inactive_color, active_color, *on_click: Action, padding: int = 4):
+    def __init__(self, game_object: Game, text_object: Text, inactive_color, active_color, *on_click: Action, padding: int = 6):
         super().__init__(game_object, text_object.x-padding, text_object.y-padding)
         self.padding = padding
         self.text = text_object
@@ -73,10 +73,7 @@ class Button(Drawable):
         self.x = self.text.x - self.padding - self.text.offset[0]
         self.y = self.text.y - self.padding - self.text.offset[1]
 
-    def step(self):
-        pass
-
-    def act(self, event):
+    def interact(self, event):
         if event.type == pygame.MOUSEBUTTONUP\
            and event.button == 1\
            and self.x + self.width > event.pos[0] > self.x\

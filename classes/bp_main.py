@@ -10,12 +10,12 @@ class Menu(Room):
     У кнопок должны быть методы draw и act соответственно.
     '''
 
-    def __init__(self, game):
-        super().__init__(game)
+    def __init__(self, game: Game):
+        super().__init__(game,
+                         next_room=MainField(game, self),
+                         pause_enabled=False)
         self.game.score = 0
         self.game.counter = 0
-        self.pause_enabled = False
-        self.next_room = MainField(game, self)
         title = Text(game=self.game, text='BACK_PAC_MAN')
         # START GAME <-> RESUME must keep in 'self'
         self.start_text = Text(self.game, text='START GAME', font_size=20, color=Color.DARK_GREEN, pos=(self.game.size[0] // 2, self.game.size[1] // 3), centrate=(True, True))
@@ -31,7 +31,6 @@ class Menu(Room):
 class MainField(Room):
     def __init__(self, game, prev_room: Room = None):
         super().__init__(game, prev_room)
-
         # инициализация элементов поля
         self.lbl_score = Text(self.game, text="Score: {}".format(self.game.score), pos=(self.game.size[0] // 2, self.game.size[1] - 30), centrate=(True, False))
         self.paclives = []  # для отрисовки жизней
@@ -178,8 +177,7 @@ class DeathMessage(Room):
     '''
 
     def __init__(self, game):
-        super().__init__(game)
-        self.pause_enabled = False
+        super().__init__(game, pause_enabled=False)
         title = Text(game=self.game, text='GAME OVER', font_size=36, color=Color.GREEN, pos=(self.game.size[0] // 2, self.game.size[1] // 5), centrate=(True, False))
         record_text = Text(game=self.game, text='Your score is {}'.format(self.game.score), pos=(self.game.size[0] // 2, self.game.size[1] / 2), centrate=(True, True))
         start_text = Text(self.game, text='MAIN MENU', color=Color.DARK_GREEN, pos=(self.game.size[0] // 2, self.game.size[1] - self.game.size[1] // 3), centrate=(True, True))
@@ -209,7 +207,7 @@ class Pacman(Creature):
         self.look_forward = True
         self.look_vertical = False
 
-    def act(self, e: pygame.event):
+    def interact(self, e: pygame.event):
         if e.type == pygame.KEYDOWN:
             if e.key in (119, 97, 115, 100) and (self.move_cache == [] or self.move_cache[-1] != e.key) and len(
                     self.move_cache) < 5:
@@ -219,9 +217,7 @@ class Pacman(Creature):
         self.steps_alive += 1
         for e in self.may_collide_with(self.x, self.y):
             if isinstance(e, Seed):
-                '''
-                Если съел энерджайзер, призраки становятся уязвимыми
-                '''
+                # Если съел энерджайзер, призраки становятся уязвимыми
                 if e.score == 10:
                     for g in self.game.current_room.ghosts:
                         g.creature.vulnerable_mode()
@@ -231,13 +227,6 @@ class Pacman(Creature):
                 '''
                 Поединок с призраком
                 '''
-            elif isinstance(e, Spawner) and isinstance(e.creature, Ghost):
-                if e.creature.vulnerable:
-                    e.creature.die()
-                else:
-                    self.die()
-                    return
-
             if isinstance(e, Teleport):
                 e.apply(self)
         if len(self.move_cache):
@@ -277,6 +266,13 @@ class Pacman(Creature):
                 self.look_forward = look_forward
                 self.look_vertical = look_vertical
 
+    def creation(self):
+        self.move_cache = []
+        self.speed = 1
+        self.steps_alive = 0
+        self.look_forward = True
+        self.look_vertical = False
+
     def die(self):
         self.game.current_room.remove_life()
         self.game.current_room.toDraw.remove(self)
@@ -299,32 +295,62 @@ class Pacman(Creature):
 
 
 class Ghost(Creature):
+    vulnerable_steps = 240
     pinky = pygame.image.load("images/pink.png")
     inky = pygame.image.load("images/blue.png")
     blinky = pygame.image.load("images/red.png")
     clyde = pygame.image.load("images/yellow.png")
     vuln = pygame.image.load("images/vuln.png")
     dead = pygame.image.load("images/eyes.png")
+    eye_dist = 5 # Растояние от глаза до середины
 
     def __init__(self, game: Game, x: int = 0, y: int = 0):
         super().__init__(game, x, y, (15, 15))
         self.vulnerable = False
+        self.vulnerable_begin = 0
+        self.target_pos = (self.x, self.y)
+        self.image_cache = self.image # Чтоб не None
+        self.avaliable_places = []
 
     def step(self):
-        pass
+        if self.vulnerable and\
+           self.vulnerable_begin+self.vulnerable_steps >= self.game.counter:
+            self.image = self.image_cache
+            self.vulnerable = False
+        from random import choice
+        if not self.game.counter % 120:
+            self.target_pos = choice(self.avaliable_places)
 
     def vulnerable_mode(self):
-        image_cache = self.image
+        self.image_cache = self.image
         self.vulnerable = True
-        self.game.current_room.toDraw.remove(self)
+        self.vulnerable_begin = self.game.counter
         self.image = self.vuln
-        self.game.current_room.toDraw.append(self)
+
+    def creation(self):
+        self.vulnerable = False
+        self.target_pos = (self.x, self.y)
+        self.image_cache = self.image  # Чтоб не None
+        self.avaliable_places = []
+        for i in range(len(self.game.current_room.map)):
+            for j in range(len(self.game.current_room.map[i])):
+                if None in self.game.current_room.map[i][j]:
+                    self.avaliable_places += [(j * 30 + 15, i * 30 + 15)]
 
     def die(self):
-        image_cache = self.image
-        self.game.current_room.toDraw.remove(self)
+        self.image_cache = self.image
         self.image = self.dead
-        self.game.current_room.toDraw.append(self)
+        super().die()
+
+    def draw(self):
+        if self.is_alive:
+            super().draw()
+        #self.target_pos
+        pygame.draw.circle(self.game.screen, Color.WHITE, (self.x-self.eye_dist, self.y), 3)
+        pygame.draw.circle(self.game.screen, Color.WHITE, (self.x+self.eye_dist, self.y), 3)
+        pygame.draw.circle(self.game.screen, Color.BLACK, (self.x-self.eye_dist, self.y), 1)
+        pygame.draw.circle(self.game.screen, Color.BLACK, (self.x+self.eye_dist, self.y), 1)
+
 
 
 class Seed(Creature):
@@ -356,7 +382,7 @@ class Seed(Creature):
         pygame.draw.circle(self.game.screen, Color.GREEN, (self.x, self.y), r)
 
 
-class Teleport(Interactable):
+class Teleport(BasicObject):
     def __init__(self, game: Game, x, y):
         super().__init__(game)
         self.x, self.y = x, y
