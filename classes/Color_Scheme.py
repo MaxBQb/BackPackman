@@ -9,3 +9,4 @@ class Color:
     BROWN = (150, 75, 0)
     WHITE = (255, 255, 255)
     ORANGE = (255, 180, 0)
+    YELLOW = (250, 240, 0)
