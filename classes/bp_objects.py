@@ -5,7 +5,11 @@ from random import randint, choice
 
 
 class Pacman(Creature):
-    image = pygame.image.load("images/pacman.png")
+    reg, half, closed = "images/pacman.png", "images/pacman_closed1.png", "images/pacman_closed2.png"
+    # от количества повторений картинок меняется скорость анимации: 
+    images = [reg]*20 + [half]*10 + [closed]*10
+    images += reversed(images)
+    image = pygame.image.load(images[0])
 
     def __init__(self, game: Game, x: int = 0, y: int = 0):
         super().__init__(game, x, y, (15, 15))
@@ -121,6 +125,7 @@ class Pacman(Creature):
         super().die()
 
     def draw(self):
+        self.image = pygame.image.load(self.images[self.game.counter % len(self.images)])
         im = self.image
         self.image = pygame.transform.flip(
             self.image,
@@ -232,8 +237,8 @@ class Seed(Creature):
         self.radius, self.score = radius, score
         self.g = randint(10, 100)
         sc = randint(15, 40)
-        delta = randint(1, 2) + randint(0, 1) * randint(0, 1) * randint(0, 1) * randint(0, 1) * randint(0, 1) * randint(
-            0, 1) * randint(0, 1)
+        delta = randint(1, 2) + randint(0, 1) * randint(0, 1) * randint(0, 1) * randint(0, 1) * randint(0, 1) * \
+                randint(0, 1) * randint(0, 1)
         self.rad_frames = [i // sc for i in range(sc * (radius - delta), sc * (radius + delta))]
         self.rad_frames += reversed(self.rad_frames)
 
