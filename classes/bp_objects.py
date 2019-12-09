@@ -1,13 +1,12 @@
 from classes.bp_basics import *
 from classes.Color_Scheme import *
 from classes import bp_rooms as rooms
-from random import randint, choice
+from random import randint
 
 
 class Pacman(Creature):
     reg, half, closed = "images/pacman.png", "images/pacman_closed1.png", "images/pacman_closed2.png"
-    # от количества повторений картинок меняется скорость анимации: 
-    images = [reg]*20 + [half]*10 + [closed]*10
+    images = [reg, half, closed]
     images += reversed(images)
     image = pygame.image.load(images[0])
 
