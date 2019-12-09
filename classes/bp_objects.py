@@ -101,7 +101,10 @@ class Pacman(Creature):
                     else:
                         self.die()
             elif isinstance(e, Teleport) and react:
-                e.apply(self)
+                if e.is_active():
+                    e.apply(self)
+                    self.move_cache = [self.move_cache[0]] + self.move_cache
+                    return False  # Чтоб не возвращал в то же место по окончании
         return True
 
     def creation(self):
@@ -270,10 +273,11 @@ class Energizer(Seed):
 
 
 class Teleport(BasicObject):
+    cooldown = 400
+
     def __init__(self, game: Game, x, y):
         super().__init__(game)
         self.x, self.y = x, y
-        self.cooldown = 40
         self.last_active = 0
         self.out = None
 
@@ -281,10 +285,12 @@ class Teleport(BasicObject):
         self.out = other
         other.out = self
 
+    def is_active(self) -> bool:
+        return self.out and self.game.counter - self.last_active > self.cooldown
+
     def apply(self, entity: Creature):
-        if self.out and self.game.counter - self.last_active > self.cooldown:
-            entity.set_pos(self.out.x, self.out.y)
-            self.last_active = self.out.last_active = self.game.counter
+        self.last_active = self.out.last_active = self.game.counter
+        entity.set_pos(self.out.x, self.out.y)
 
 
 class Spawner(BasicObject):
