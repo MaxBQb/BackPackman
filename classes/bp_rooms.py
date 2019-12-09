@@ -18,22 +18,31 @@ class Menu(Room):
         self.game.counter = 0
         title = Text(game=self.game, text='BACK_PAC_MAN')
         # START GAME <-> RESUME must keep in 'self'
-        self.start_text = Text(self.game, text='START GAME', font_size=20, color=Color.DARK_GREEN, pos=(self.game.size[0] // 2, self.game.size[1] // 3), centrate=(True, True))
-        end_text = Text(self.game, text='EXIT GAME', font_size=20, color=Color.DARK_RED, pos=(self.game.size[0] // 2, self.game.size[1] // 3 + 45), centrate=(True, True))
+        self.start_text = Text(self.game, text='START GAME', font_size=20, color=Color.DARK_GREEN,
+                               pos=(self.game.size[0] // 2, self.game.size[1] // 3), centrate=(True, True))
+        end_text = Text(self.game, text='EXIT GAME', font_size=20, color=Color.DARK_RED,
+                        pos=(self.game.size[0] // 2, self.game.size[1] // 3 + 45), centrate=(True, True))
         start_btn = Button(self.game, self.start_text, Color.BLACK, Color.DARK_GREEN,
                            Action(transit, game=self.game, room=self.next_room))
         exit_btn = Button(self.game, end_text, Color.BLACK, Color.DARK_RED, Action(self.game.quit))
-        self.toDraw += [title, start_btn, exit_btn]
-        self.eventListeners += [exit_btn, start_btn]
+
+        records = Text(self.game, text='Show records', color=Color.YELLOW, font_size = 20,
+                       pos=(self.game.size[0] // 2, self.game.size[1] // 3 + 90),
+                       centrate=(True, True))
+        records_btn = Button(self.game, records, Color.BLACK, Color.YELLOW, \
+                             Action(transit, game=self.game, room=GameRecords(game, self)))
+        self.toDraw += [title, start_btn, exit_btn, records, records_btn]
+        self.eventListeners += [exit_btn, start_btn, records_btn]
 
 
 class MainField(Room):
     def __init__(self, game, prev_room: Room = None):
         super().__init__(game, prev_room)
         # инициализация элементов поля
-        self.lbl_score = Text(self.game, text="Score: {}".format(self.game.score), pos=(self.game.size[0] // 2, self.game.size[1] - 30), centrate=(True, False))
+        self.lbl_score = Text(self.game, text="Score: {}".format(self.game.score),
+                              pos=(self.game.size[0] // 2, self.game.size[1] - 30), centrate=(True, False))
         self.paclives = []  # для отрисовки жизней
-        self.ghosts = [] # для призраков
+        self.ghosts = []  # для призраков
         self.pacman = None
         self.seeds_count = 0
         self.draw_lives()
@@ -179,23 +188,74 @@ class Final(Room):
 
     def __init__(self, game, is_victory: bool):
         super().__init__(game, pause_enabled=False)
-        title = Text(game=self.game, text='GAME OVER', font_size=48, color=Color.GREEN, pos=(self.game.size[0] // 2, self.game.size[1] // 5), centrate=(True, False))
+        title = Text(game=self.game, text='GAME OVER', font_size=48, color=Color.GREEN,
+                     pos=(self.game.size[0] // 2, self.game.size[1] // 5), centrate=(True, False))
         self.game.records.add(self.game.score)
+        self.next_room = GameRecords(game, self)
+
         if is_victory:
-            title.update_text('YOU WIN')
+            title.update_text('YOU WON!')
             self.background = Color.BROWN
-        record_text = Text(game=self.game, text='Your score is {}'.format(self.game.score), pos=(self.game.size[0] // 2, self.game.size[1] / 2), centrate=(True, True))
-        start_text = Text(self.game, text='MAIN MENU', color=Color.DARK_GREEN, pos=(self.game.size[0] // 2, self.game.size[1] - self.game.size[1] // 3), centrate=(True, True))
-        replay_text = Text(self.game, text='PLAY AGAIN', color=Color.ORANGE, pos=(self.game.size[0] // 2, self.game.size[1] - self.game.size[1] // 3 + 45), centrate=(True, True))
-        end_text = Text(self.game, text='EXIT GAME', color=Color.DARK_RED, pos=(self.game.size[0] // 2, self.game.size[1] - self.game.size[1] // 3 + 90), centrate=(True, True))
+
+        record_text = Text(game=self.game, text='Your score is {}'.format(self.game.score),
+                           pos=(self.game.size[0] // 2, self.game.size[1] / 2 - 50), centrate=(True, True))
+        if self.game.score >= max(self.game.records.stats):
+            new_record = Text(game=self.game, text='This is a new record!', font_size=20,
+                               pos=(self.game.size[0] // 2, self.game.size[1] / 2 - 30 + record_text.get_size()[1]),
+                              color = Color.YELLOW, centrate=(True, True))
+            self.toDraw.append(new_record)
+        start_text = Text(self.game, text='MAIN MENU', color=Color.DARK_GREEN,
+                          pos=(self.game.size[0] // 2, self.game.size[1] - self.game.size[1] // 3),
+                          centrate=(True, True))
+        replay_text = Text(self.game, text='PLAY AGAIN', color=Color.ORANGE,
+                           pos=(self.game.size[0] // 2, self.game.size[1] - self.game.size[1] // 3 + 45),
+                           centrate=(True, True))
+        end_text = Text(self.game, text='EXIT GAME', color=Color.DARK_RED,
+                        pos=(self.game.size[0] // 2, self.game.size[1] - self.game.size[1] // 3 + 90),
+                        centrate=(True, True))
+        records = Text(self.game, text='Show records', color=Color.YELLOW,
+                       pos=(self.game.size[0] // 2, self.game.size[1] - self.game.size[1] // 3 + 135),
+                       centrate=(True, True))
         menu = Menu(self.game)
-        menu_btn = Button(self.game, start_text, Color.BLACK, Color.DARK_GREEN,\
+        menu_btn = Button(self.game, start_text, Color.BLACK if not is_victory else Color.BROWN, Color.DARK_GREEN, \
                           Action(transit, game=self.game, room=menu))
-        replay_btn = Button(self.game, replay_text, Color.BLACK, Color.ORANGE,\
+        replay_btn = Button(self.game, replay_text, Color.BLACK if not is_victory else Color.BROWN, Color.ORANGE, \
                             Action(transit, game=self.game, room=menu.next_room))
-        exit_btn = Button(self.game, end_text, Color.BLACK, Color.DARK_RED,\
+        records_btn = Button(self.game, records, Color.BLACK if not is_victory else Color.BROWN, Color.YELLOW, \
+                             Action(transit, game=self.game, room=self.next_room))
+        exit_btn = Button(self.game, end_text, Color.BLACK if not is_victory else Color.BROWN, Color.DARK_RED, \
                           Action(self.game.quit))
 
-        self.toDraw += [title, menu_btn, exit_btn, record_text, replay_text, replay_btn]
-        self.eventListeners += [exit_btn, menu_btn, replay_btn]
+        self.toDraw += [title, menu_btn, exit_btn, record_text, replay_text, replay_btn, records, records_btn]
+        self.eventListeners += [exit_btn, menu_btn, replay_btn, records_btn]
 
+
+class GameRecords(Room):
+
+    def __init__(self, game, prev_room: Room = None):
+        super().__init__(game)
+        self.prev_room = prev_room
+        shift = 0
+        text = Text(self.game, text='highest scores:', font_size=25,
+                    pos=(self.game.size[0] // 2, 50), centrate=(True, True))
+        self.toDraw.append(text)
+
+        if self.game.records.stats:
+            for item in self.game.records.stats:
+                text = Text(self.game, text=str(item), pos=(self.game.size[0] // 2, self.game.size[1] / 3 + shift),
+                            centrate=(True, True))
+                shift += text.get_size()[1] + 10
+                self.toDraw.append(text)
+        else:
+            no = Text(self.game, text="There are no highest scores yet",
+                      pos=(self.game.size[0] // 2, self.game.size[1] / 2),
+                      centrate=(True, True))
+            self.toDraw.append(no)
+
+        back_text = Text(self.game, text='Back', color=Color.DARK_GREEN,
+                         pos=(self.game.size[0] // 2, self.game.size[1] - self.game.size[1] // 3),
+                         centrate=(True, True))
+        back_btn = Button(self.game, back_text, Color.BLACK, Color.DARK_GREEN, \
+                          Action(transit, game=self.game, room=self.prev_room))
+        self.toDraw += [back_text, back_btn]
+        self.eventListeners += [back_btn]

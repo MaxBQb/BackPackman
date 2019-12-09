@@ -30,7 +30,7 @@ class Game:
         self.preload_room = self.current_room = None
         self.counter = 0
         self.score = 0
-        self.records = Records("hight_scores.txt")
+        self.records = Records("high_scores.txt")
         self.records.read()
         self.pause_screen = pygame.Surface(self.size, pygame.SRCALPHA)
         self.pause_screen.fill((0, 0, 0, 160))

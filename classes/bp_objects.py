@@ -157,7 +157,7 @@ class Ghost(Creature):
            self.vulnerable_begin+self.vulnerable_steps <= self.game.counter:
             self.image = self.image_cache
             self.vulnerable = False
-        ''' Directions is clockwise
+        ''' Directions is counter-clockwise
                  [up 0]
             [left 1] [right 3]
                  [down 2]
