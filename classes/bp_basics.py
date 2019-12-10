@@ -6,17 +6,18 @@ from classes.Color_Scheme import *
 Events scheme
 Firstly:
     1) Room creation event (once)
-    2) Already exist in room objects creation event (once)
+    2) Generate room cached (static) background (once)
+    3) Already exist in room objects creation event (once)
 
 Loop:
-    3) User interaction event for each in eventListeners (catches by act())
-    4) Step event for each in eventListeners (catches by step())
-    5) Draw event for each in toDraw (catches by draw())
+    1) User interaction event for each in eventListeners (catches by act())
+    2) Step event for each in eventListeners (catches by step())
+    3) Draw event for each in toDraw (catches by draw())
 
 Possible events:
-    6) Creation (by Spawner or script)
-    7) Collision for Creature every step (catches by collide())
-    8) Death (catches by die())
+    1) Creation (by Spawner or script)
+    2) Collision for Creature every step (catches by collide())
+    3) Death (catches by die())
 '''
 
 
@@ -60,7 +61,7 @@ class Game:
             if not self.Paused:
                 # if not self.counter % 3:
                 self.current_room.step()
-                self.screen.fill(self.current_room.background)
+                self.screen.blit(self.current_room.static_back, (0, 0))
                 self.current_room.draw()
                 pygame.display.flip()
                 self.counter += 1
@@ -107,10 +108,13 @@ class Room(BasicObject):
         self.prev_room = prev_room
         self.next_room = next_room
         self.created = False
+        self.static_back = pygame.Surface(game.size, pygame.SRCALPHA)
         self.pause_enabled = pause_enabled
-        self.background = background
+        self.static_back.fill(background)
         # Сюда классы наследники добавляют объекты для отрисовки
         self.toDraw = []
+        # Сюда объекты для отрисовки в фон
+        self.toDrawStatic = []
         # Cюда для взаимодействия
         self.eventListeners = []
 
@@ -122,16 +126,16 @@ class Room(BasicObject):
         if self.created:
             return
         self.created = True
-        all_o = []
-        for e in self.eventListeners:
-            if not e in all_o:
-                all_o.append(e)
-        for e in self.toDraw:
-            if not e in all_o:
-                all_o.append(e)
-        for o in all_o:
+        all_o = self.eventListeners+self.toDraw+self.toDrawStatic
+        unic_o = []
+        for e in all_o:
+            if not e in unic_o:
+                unic_o.append(e)
+        for o in unic_o:
             if not isinstance(o, list):
                 o.creation()
+        for e in self.toDrawStatic:
+            e.draw(self.static_back)
 
     def step(self):
         for obj in self.eventListeners:
@@ -168,8 +172,10 @@ class Drawable(BasicObject):
         self.x, self.y = x, y
         self.offset = offset
 
-    def draw(self):
-        self.game.screen.blit(self.image, (self.x - self.offset[0], self.y - self.offset[1]))
+    def draw(self, surf=None):
+        if not surf:
+            surf = self.game.screen
+        surf.blit(self.image, (self.x - self.offset[0], self.y - self.offset[1]))
 
 
 class Creature(Drawable):

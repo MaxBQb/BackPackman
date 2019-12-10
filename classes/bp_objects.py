@@ -16,7 +16,7 @@ class Pacman(Creature):
     def __init__(self, game: Game, x: int = 0, y: int = 0):
         super().__init__(game, x, y, (15, 15))
         self.move_cache = []
-        self.speed = 1
+        self.speed = 0
         self.eating = False
         self.eat_animation_counter = 0
         self.passive = True
@@ -116,7 +116,7 @@ class Pacman(Creature):
 
     def creation(self):
         self.move_cache = []
-        self.speed = 1
+        self.speed = 2
         self.eating = False
         self.eat_animation_counter = 0
         self.look_forward = True
@@ -181,7 +181,7 @@ class Ghost(Creature):
             [left 1] [right 3]
                  [down 2]
         '''
-        if not self.game.counter%480 or not randint(0, 15):
+        if not self.x % 15 and not self.y % 15 and not randint(0, 2):
             tmpd = randint(0, 3)
             # Попытка сменить направление под прямым углом
             if tmpd % 2 == self.direction % 2:
@@ -304,10 +304,14 @@ class Spawner(BasicObject):
         super().__init__(game)
         self.delay = delay
         self.pos = pos
-        self.spawn_request_time = self.game.counter
+        self.spawn_request_time = 0
         self.can_spawn = True
         creature.spawner = self
         self.creature = creature
+
+    def creation(self):
+        self.spawn_request_time = self.game.counter
+        self.can_spawn = True
 
     def step(self):
         if self.can_spawn and \
@@ -333,10 +337,10 @@ class Wall(Drawable):
 
     def __init__(self, game: Game, x: int = 0, y: int = 0):
         super().__init__(game, x, y)
-        self.scr = pygame.Surface((30, 30), pygame.SRCALPHA)
+        self.image = pygame.Surface((30, 30), pygame.SRCALPHA)
 
     def creation(self):
-        self.scr.fill(self.background)
+        self.image.fill(self.background)
         up, down, right, left = [True] * 4
         map = self.game.current_room.map
         ''' [ul] [uc] [ur]
@@ -375,41 +379,38 @@ class Wall(Drawable):
         '''
         # Borders
         if uc is False:
-            pygame.draw.line(self.scr, self.border_color, (v_start, self.line_width // 2 - 1),
+            pygame.draw.line(self.image, self.border_color, (v_start, self.line_width // 2 - 1),
                              (v_end, self.line_width // 2 - 1), self.line_width)
         if ml is False:
-            pygame.draw.line(self.scr, self.border_color, (self.line_width // 2 - 1, h_start),
+            pygame.draw.line(self.image, self.border_color, (self.line_width // 2 - 1, h_start),
                              (self.line_width // 2 - 1, h_end), self.line_width)
         if mr is False:
-            pygame.draw.line(self.scr, self.border_color, (30 - self.line_width // 2 - 1, h_start),
+            pygame.draw.line(self.image, self.border_color, (30 - self.line_width // 2 - 1, h_start),
                              (30 - self.line_width // 2 - 1, h_end), self.line_width)
         if dc is False:
-            pygame.draw.line(self.scr, self.border_color, (v_start, 30 - self.line_width // 2 - 1),
+            pygame.draw.line(self.image, self.border_color, (v_start, 30 - self.line_width // 2 - 1),
                              (v_end, 30 - self.line_width // 2 - 1), self.line_width)
         # Inner rounds
         if ul is False and uc and ml:
-            pygame.draw.circle(self.scr, self.border_color, (0, 0), self.line_width)
+            pygame.draw.circle(self.image, self.border_color, (0, 0), self.line_width)
         if ur is False and uc and mr:
-            pygame.draw.circle(self.scr, self.border_color, (30, 0), self.line_width)
+            pygame.draw.circle(self.image, self.border_color, (30, 0), self.line_width)
         if dl is False and dc and ml:
-            pygame.draw.circle(self.scr, self.border_color, (0, 30), self.line_width)
+            pygame.draw.circle(self.image, self.border_color, (0, 30), self.line_width)
         if dr is False and dc and mr:
-            pygame.draw.circle(self.scr, self.border_color, (30, 30), self.line_width)
+            pygame.draw.circle(self.image, self.border_color, (30, 30), self.line_width)
         # Outer rounds
         if uc is False and ml is False:
-            pygame.draw.circle(self.scr, self.border_color, (self.line_width, self.line_width), self.line_width)
+            pygame.draw.circle(self.image, self.border_color, (self.line_width, self.line_width), self.line_width)
         if uc is False and mr is False:
-            pygame.draw.circle(self.scr, self.border_color, (30 - self.line_width, self.line_width), self.line_width)
+            pygame.draw.circle(self.image, self.border_color, (30 - self.line_width, self.line_width), self.line_width)
         if dc is False and ml is False:
-            pygame.draw.circle(self.scr, self.border_color, (self.line_width, 30 - self.line_width), self.line_width)
+            pygame.draw.circle(self.image, self.border_color, (self.line_width, 30 - self.line_width), self.line_width)
         if dc is False and mr is False:
-            pygame.draw.circle(self.scr, self.border_color, (30 - self.line_width, 30 - self.line_width),
+            pygame.draw.circle(self.image, self.border_color, (30 - self.line_width, 30 - self.line_width),
                                self.line_width)
-        pygame.draw.rect(self.scr, self.background,
+        pygame.draw.rect(self.image, self.background,
                          (self.line_width, self.line_width, 30 - self.line_width * 2, 30 - self.line_width * 2))
-
-    def draw(self):
-        self.game.screen.blit(self.scr, (self.x, self.y))
 
 
 class EctoWall(Drawable):

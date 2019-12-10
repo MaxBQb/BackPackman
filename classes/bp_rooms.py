@@ -107,8 +107,8 @@ class MainField(Room):
             for c, char in enumerate(line):
                 if char == '#':
                     fs = Wall(self.game, c * 30, l * 30)
-                    self.map[l][c] += [fs, True]
-                    self.toDraw.append(fs)
+                    self.map[l][c].append(True)
+                    self.toDrawStatic.append(fs)
                 else:
                     self.map[l][c].append(None)
                 if char == '$':
@@ -148,7 +148,7 @@ class MainField(Room):
                 elif char == '-':
                     fs = EctoWall(self.game, c * 30, l * 30)
                     self.map[l][c].append(fs)
-                    self.toDraw.append(fs)
+                    self.toDrawStatic.append(fs)
 
         for t in teleports.values():
             if len(t) == 2:
@@ -177,6 +177,7 @@ class MainField(Room):
     def creation(self):
         self.game.score = 0
         self.game.counter = 0
+        self.update_score()
         self.prev_room.start_text.update_text('RESUME')
         self.path = Path(self.map)
         super().creation()
@@ -189,19 +190,15 @@ class Final(Room):
     '''
 
     def __init__(self, game, is_victory: bool):
-        super().__init__(game, pause_enabled=False)
-        title = Text(game=self.game, text='GAME OVER', font_size=48, color=Color.GREEN,
+        super().__init__(game, pause_enabled=False, background= Color.BROWN if is_victory else Color.BLACK)
+        title = Text(game=self.game, text='YOU WON!' if is_victory else'GAME OVER', font_size=48, color=Color.GREEN,
                      pos=(self.game.size[0] // 2, self.game.size[1] // 5), centrate=(True, False))
         self.game.records.add(self.game.score)
         self.next_room = GameRecords(game, self)
 
-        if is_victory:
-            title.update_text('YOU WON!')
-            self.background = Color.BROWN
-
         record_text = Text(game=self.game, text='Your score is {}'.format(self.game.score),
                            pos=(self.game.size[0] // 2, self.game.size[1] / 2 - 50), centrate=(True, True))
-        if self.game.score >= max(self.game.records.stats):
+        if self.game.score > max(self.game.records.stats):
             new_record = Text(game=self.game, text='This is a new record!', font_size=20,
                               pos=(self.game.size[0] // 2, self.game.size[1] / 2 - 30 + record_text.get_size()[1]),
                               color=Color.YELLOW, centrate=(True, True))
