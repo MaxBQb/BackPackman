@@ -81,7 +81,7 @@ class MainField(Room):
         back_text = Text(self.game, text="Main Menu", pos=(30, self.game.size[1] - 30), color=Color.DARK_GREEN)
         back_btn = Button(self.game, back_text, Color.BLACK, Color.DARK_GREEN,
                           Action(transit, game=self.game, room=prev_room))
-        self.toDraw += [back_btn, self.lbl_score]
+        self.toDraw += [back_btn, self.lbl_score, self.paclives]
         self.eventListeners += [back_btn]
 
     def update_lives(self):
@@ -175,6 +175,8 @@ class MainField(Room):
             self.paclives.pop()
 
     def creation(self):
+        self.game.score = 0
+        self.game.counter = 0
         self.prev_room.start_text.update_text('RESUME')
         self.path = Path(self.map)
         super().creation()
@@ -201,8 +203,8 @@ class Final(Room):
                            pos=(self.game.size[0] // 2, self.game.size[1] / 2 - 50), centrate=(True, True))
         if self.game.score >= max(self.game.records.stats):
             new_record = Text(game=self.game, text='This is a new record!', font_size=20,
-                               pos=(self.game.size[0] // 2, self.game.size[1] / 2 - 30 + record_text.get_size()[1]),
-                              color = Color.YELLOW, centrate=(True, True))
+                              pos=(self.game.size[0] // 2, self.game.size[1] / 2 - 30 + record_text.get_size()[1]),
+                              color=Color.YELLOW, centrate=(True, True))
             self.toDraw.append(new_record)
         start_text = Text(self.game, text='MAIN MENU', color=Color.DARK_GREEN,
                           pos=(self.game.size[0] // 2, self.game.size[1] - self.game.size[1] // 3),

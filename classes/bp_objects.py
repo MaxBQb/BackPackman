@@ -5,15 +5,20 @@ from random import randint
 
 
 class Pacman(Creature):
-    reg, half, closed = "images/pacman.png", "images/pacman_closed1.png", "images/pacman_closed2.png"
-    images = [reg, half, closed]
+    images = [pygame.image.load(e) for e in [
+        "images/pacman.png",
+        "images/pacman_closed1.png",
+        "images/pacman_closed2.png",
+    ]]
     images += reversed(images)
-    image = pygame.image.load(images[0])
+    image = images[0]
 
     def __init__(self, game: Game, x: int = 0, y: int = 0):
         super().__init__(game, x, y, (15, 15))
         self.move_cache = []
-        self.speed = 2
+        self.speed = 1
+        self.eating = False
+        self.eat_animation_counter = 0
         self.passive = True
         self.look_forward = True
         self.look_vertical = False
@@ -34,6 +39,7 @@ class Pacman(Creature):
                    ||
                   [mmd]
         '''
+        self.eating = False
         mmu = self.can_move(0, -self.speed)
         mmd = self.can_move(0, self.speed)
         mml = self.can_move(-self.speed, 0)
@@ -93,6 +99,8 @@ class Pacman(Creature):
             elif isinstance(e, Seed) and react:
                 # Если съел энерджайзер, призраки становятся уязвимыми
                 e.eat()
+                self.eating = True
+
             elif isinstance(e, Ghost) and react:
                 if e.is_alive:
                     if e.vulnerable:
@@ -108,7 +116,9 @@ class Pacman(Creature):
 
     def creation(self):
         self.move_cache = []
-        self.speed = 2
+        self.speed = 1
+        self.eating = False
+        self.eat_animation_counter = 0
         self.look_forward = True
         self.dynamic_coll_check = self.game.current_room.ghosts
         self.look_vertical = False
@@ -127,7 +137,9 @@ class Pacman(Creature):
         super().die()
 
     def draw(self):
-        self.image = pygame.image.load(self.images[self.game.counter % len(self.images)])
+        if self.eating:
+            self.image = self.images[self.eat_animation_counter // 10 % len(self.images)]
+            self.eat_animation_counter += 1
         im = self.image
         self.image = pygame.transform.flip(
             self.image,
@@ -146,7 +158,7 @@ class Ghost(Creature):
     clyde = pygame.image.load("images/yellow.png")
     vuln = pygame.image.load("images/vuln.png")
     dead = pygame.image.load("images/eyes.png")
-    eye_dist = 5 # Растояние от глаза до середины
+    eye_dist = 5  # Растояние от глаза до середины
     directions = [(0, -1), (-1, 0), (0, 1), (1, 0)]
 
     def __init__(self, game: Game, x: int = 0, y: int = 0):
@@ -169,7 +181,7 @@ class Ghost(Creature):
             [left 1] [right 3]
                  [down 2]
         '''
-        if not self.game.counter%480 or not randint(0, 65):
+        if not self.game.counter%480 or not randint(0, 15):
             tmpd = randint(0, 3)
             # Попытка сменить направление под прямым углом
             if tmpd % 2 == self.direction % 2:
@@ -179,12 +191,7 @@ class Ghost(Creature):
                 self.direction = tmpd
         mx_c, my_c = self.directions[self.direction]
         if not self.move(self.speed * mx_c, self.speed * my_c):
-            tmpd = self.direction
             self.direction = randint(0, 3)
-            if self.direction == tmpd:
-                self.direction = randint(0, 3)
-            if self.direction == tmpd:
-                self.direction = randint(0, 3)
             self.step()
         self.target_pos = pygame.mouse.get_pos()
 

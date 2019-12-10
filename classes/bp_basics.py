@@ -106,6 +106,7 @@ class Room(BasicObject):
         super().__init__(game)
         self.prev_room = prev_room
         self.next_room = next_room
+        self.created = False
         self.pause_enabled = pause_enabled
         self.background = background
         # Сюда классы наследники добавляют объекты для отрисовки
@@ -118,6 +119,9 @@ class Room(BasicObject):
             obj.interact(event)
 
     def creation(self):
+        if self.created:
+            return
+        self.created = True
         all_o = []
         for e in self.eventListeners:
             if not e in all_o:
