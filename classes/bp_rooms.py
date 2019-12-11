@@ -1,7 +1,6 @@
 from classes.bp_interface import *
 from classes.Color_Scheme import *
 from classes.bp_objects import *
-from classes.bp_interface import Paclives
 
 
 class Menu(Room):
