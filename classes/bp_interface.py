@@ -81,3 +81,28 @@ class Button(Drawable):
            and self.on_click is not None:
             for e in self.on_click:
                 e.act()
+
+
+class Paclives(Drawable):
+
+    def __init__(self, game: Game, x: int = 0, y: int = 0, offset: (int, int) = (0, 0)):
+        super().__init__(game, x, y, offset)
+        self.image = pygame.image.load("images/pacman_small.png")
+        self.lives = []
+        self.make_lives()
+
+    def make_lives(self):
+        shift = 35
+        for i in range(3):
+            life = Drawable(self.game, self.game.size[0] - shift, self.game.size[1] - 10, (15, 15))
+            life.image = self.image
+            shift += 35
+            self.lives.append(life)
+
+    def draw(self):
+        for life in self.lives:
+            life.draw()
+
+    def remove_life(self):
+        if len(self.lives):
+            self.lives.pop()

@@ -1,6 +1,7 @@
 from classes.bp_interface import *
 from classes.Color_Scheme import *
 from classes.bp_objects import *
+from classes.bp_interface import Paclives
 
 
 class Menu(Room):
@@ -41,11 +42,10 @@ class MainField(Room):
         # инициализация элементов поля
         self.lbl_score = Text(self.game, text="Score: {}".format(self.game.score),
                               pos=(self.game.size[0] // 2, self.game.size[1] - 30), centrate=(True, False))
-        self.paclives = []  # для отрисовки жизней
+        self.paclives = Paclives(game)
         self.ghosts = []  # для призраков
         self.pacman = None
         self.seeds_count = 0
-        self.draw_lives()
         self.path = None
         self.map = [[list() for j in range(28)] for i in range(24)]
         field = [
@@ -75,7 +75,6 @@ class MainField(Room):
             "############################",
         ]
         self.parse_field(field)
-        self.update_lives()
 
         # инициализация элементов интерфейса взаимодействия с пользователем
         back_text = Text(self.game, text="Main Menu", pos=(30, self.game.size[1] - 30), color=Color.DARK_GREEN)
@@ -83,9 +82,6 @@ class MainField(Room):
                           Action(transit, game=self.game, room=prev_room))
         self.toDraw += [back_btn, self.lbl_score, self.paclives]
         self.eventListeners += [back_btn]
-
-    def update_lives(self):
-        self.toDraw.append(self.paclives)
 
     def parse_field(self, field: list):
         """
@@ -160,19 +156,6 @@ class MainField(Room):
 
     def update_score(self):
         self.lbl_score.update_text("Score: {}".format(self.game.score))
-
-    def draw_lives(self):
-        image = pygame.image.load("images/pacman_small.png")
-        shift = 35
-        for i in range(3):
-            life = Drawable(self.game, self.game.size[0] - shift, self.game.size[1] - 10, (15, 15))
-            life.image = image
-            shift += 35
-            self.paclives.append(life)
-
-    def remove_life(self):
-        if len(self.paclives):
-            self.paclives.pop()
 
     def creation(self):
         self.game.score = 0
@@ -252,7 +235,7 @@ class GameRecords(Room):
             self.toDraw.append(no)
 
         back_text = Text(self.game, text='Back', color=Color.DARK_GREEN,
-                         pos=(self.game.size[0] // 2, self.game.size[1] - self.game.size[1] // 3),
+                         pos=(self.game.size[0] // 2, self.game.size[1] - self.game.size[1] // 4),
                          centrate=(True, True))
         back_btn = Button(self.game, back_text, Color.BLACK, Color.DARK_GREEN, \
                           Action(transit, game=self.game, room=self.prev_room))

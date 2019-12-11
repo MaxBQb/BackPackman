@@ -127,10 +127,10 @@ class Pacman(Creature):
     def die(self):
         if not self.is_alive:
             return
-        self.game.current_room.remove_life()
+        self.game.current_room.paclives.remove_life()
         self.game.current_room.toDraw.remove(self)
         self.game.current_room.eventListeners.remove(self)
-        if len(self.game.current_room.paclives):
+        if len(self.game.current_room.paclives.lives):
             self.spawner.spawn(120)
         else:
             transit(self.game, rooms.Final(self.game, False))
