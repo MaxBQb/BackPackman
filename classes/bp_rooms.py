@@ -21,13 +21,13 @@ class Menu(Room):
         self.start_text = Text(self.game, text='START GAME', font_size=20, color=Color.DARK_GREEN,
                                pos=(self.game.size[0] // 2, self.game.size[1] // 3), centrate=(True, True))
         end_text = Text(self.game, text='EXIT GAME', font_size=20, color=Color.DARK_RED,
-                        pos=(self.game.size[0] // 2, self.game.size[1] // 3 + 45), centrate=(True, True))
+                        pos=(self.game.size[0] // 2, self.game.size[1] // 3 + 90), centrate=(True, True))
         start_btn = Button(self.game, self.start_text, Color.BLACK, Color.DARK_GREEN,
                            Action(transit, game=self.game, room=self.next_room))
         exit_btn = Button(self.game, end_text, Color.BLACK, Color.DARK_RED, Action(self.game.quit))
 
         records = Text(self.game, text='Show records', color=Color.YELLOW, font_size = 20,
-                       pos=(self.game.size[0] // 2, self.game.size[1] // 3 + 90),
+                       pos=(self.game.size[0] // 2, self.game.size[1] // 3 + 45),
                        centrate=(True, True))
         records_btn = Button(self.game, records, Color.BLACK, Color.YELLOW, \
                              Action(transit, game=self.game, room=GameRecords(game, self)))
