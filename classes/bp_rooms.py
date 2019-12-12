@@ -44,6 +44,7 @@ class MainField(Room):
         self.paclives = Paclives(game)
         self.ghosts = []  # для призраков
         self.pacman = None
+        self.combos = 0
         self.seeds_count = 0
         self.path = None
         self.map = [[list() for j in range(28)] for i in range(24)]
@@ -127,15 +128,14 @@ class MainField(Room):
                     self.map[l][c].append(seed)
                     self.toDraw.append(seed)
                 elif char in 'BIPC':
-                    g = Ghost(self.game)
                     if char == 'B':
-                        g.image = Ghost.blinky
-                    elif char == 'I':
-                        g.image = Ghost.inky
-                    elif char == 'P':
-                        g.image = Ghost.pinky
-                    elif char == 'C':
-                        g.image = Ghost.clyde
+                        g = Blinky(self.game)
+                    if char == 'I':
+                        g = Inky(self.game)
+                    if char == 'P':
+                        g = Pinky(self.game)
+                    if char == 'C':
+                        g = Clyde(self.game)
                     spwn = Spawner(self.game, (c * 30 + 15, l * 30 + 15), g)
                     self.map[l][c].append(spwn)
                     self.eventListeners.append(spwn)
@@ -159,6 +159,7 @@ class MainField(Room):
     def creation(self):
         self.game.score = 0
         self.game.counter = 0
+        self.combos = 0
         self.update_score()
         self.prev_room.start_text.update_text('RESUME')
         self.path = Path(self.map)

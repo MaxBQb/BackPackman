@@ -25,6 +25,9 @@ class Pacman(Creature):
 
     def interact(self, e: pygame.event):
         if e.type == pygame.KEYDOWN:
+            if e.key == pygame.K_g:
+                for g in self.game.current_room.ghosts:
+                    g.die()
             if e.key == pygame.K_v:
                 transit(self.game, rooms.Final(self.game, True))
             if e.key in (119, 97, 115, 100) and (self.move_cache == [] or self.move_cache[-1] != e.key) and len(
@@ -105,6 +108,9 @@ class Pacman(Creature):
                 if e.is_alive:
                     if e.vulnerable:
                         e.die()
+                        self.game.current_room.combos %= 4
+                        self.game.current_room.combos += 1
+                        self.game.current_room.change_score(self.game.current_room.combos*100)
                     else:
                         self.die()
             elif isinstance(e, Teleport) and react:
@@ -131,14 +137,20 @@ class Pacman(Creature):
         self.game.current_room.toDraw.remove(self)
         self.game.current_room.eventListeners.remove(self)
         if len(self.game.current_room.paclives.lives):
+            for e in self.game.current_room.ghosts:
+                e.die()
+                self.game.current_room.toDraw.remove(e)
+                self.game.current_room.eventListeners.remove(e)
             self.spawner.spawn(120)
+            for e in self.game.current_room.ghosts:
+                e.spawner.spawn(120)
         else:
             transit(self.game, rooms.Final(self.game, False))
         super().die()
 
     def draw(self):
         if self.eating:
-            self.image = self.images[self.eat_animation_counter // 10 % len(self.images)]
+            self.image = self.images[self.eat_animation_counter//2 % len(self.images)]
             self.eat_animation_counter += 1
         im = self.image
         self.image = pygame.transform.flip(
@@ -152,9 +164,6 @@ class Pacman(Creature):
 
 class Ghost(Creature):
     vulnerable_steps = 720
-    pinky = pygame.image.load("images/pink.png")
-    inky = pygame.image.load("images/blue.png")
-    blinky = pygame.image.load("images/red.png")
     clyde = pygame.image.load("images/yellow.png")
     vuln = pygame.image.load("images/vuln.png")
     dead = pygame.image.load("images/eyes.png")
@@ -168,21 +177,28 @@ class Ghost(Creature):
         self.direction = 0
         self.speed = 1
         self.target_pos = (self.x, self.y)
-        self.image_cache = self.image # Чтоб не None
+        self.type_image = self.image # Чтоб не None
         self.avaliable_places = []
 
     def step(self):
         if self.vulnerable and\
            self.vulnerable_begin+self.vulnerable_steps <= self.game.counter:
-            self.image = self.image_cache
+            self.image = self.type_image
             self.vulnerable = False
         ''' Directions is counter-clockwise
                  [up 0]
             [left 1] [right 3]
                  [down 2]
         '''
-        if not self.x % 15 and not self.y % 15 and not randint(0, 2):
-            tmpd = randint(0, 3)
+        if not self.x % 15 and not self.y % 15 and not randint(0, 2) or\
+            self.x == self.game.current_room.pacman.x or\
+            self.y == self.game.current_room.pacman.y:
+            if self.x == self.game.current_room.pacman.x:
+                tmpd = 0 if self.vulnerable^(self.game.current_room.pacman.y < self.y) else 2
+            elif self.y == self.game.current_room.pacman.y:
+                tmpd = 1 if self.vulnerable^(self.game.current_room.pacman.x < self.x) else 3
+            else:
+                tmpd = randint(0, 3)
             # Попытка сменить направление под прямым углом
             if tmpd % 2 == self.direction % 2:
                 tmpd = (tmpd+1)%4
@@ -191,22 +207,39 @@ class Ghost(Creature):
                 self.direction = tmpd
         mx_c, my_c = self.directions[self.direction]
         if not self.move(self.speed * mx_c, self.speed * my_c):
-            self.direction = randint(0, 3)
+            if self.x == self.game.current_room.pacman.x:
+                self.direction = 0 if self.vulnerable^(self.game.current_room.pacman.y < self.y) else 2
+            elif self.y == self.game.current_room.pacman.y:
+                self.direction = 1 if self.vulnerable^(self.game.current_room.pacman.x < self.x) else 3
+            else:
+                self.direction = randint(0, 3)
             self.step()
-        self.target_pos = pygame.mouse.get_pos()
+        self.target_pos = (self.game.current_room.pacman.x,
+                           self.game.current_room.pacman.y)
+
+    def collide(self, others, react: bool = True) -> bool:
+        if not super().collide(others):
+            return False
+        if self.spawner in others and\
+           not self.is_alive and\
+           not self.spawner.can_spawn:
+            self.spawner.spawn()
+        return True
 
     def vulnerable_mode(self):
         if not self.vulnerable:
-            self.image_cache = self.image
+            self.game.current_room.combos = 0
             self.vulnerable = True
             self.image = self.vuln
         self.vulnerable_begin = self.game.counter
 
     def creation(self):
+        super().creation()
         self.vulnerable = False
+        self.speed = 1
         self.dynamic_coll_check = [self.game.current_room.pacman]
         self.target_pos = (self.x, self.y)
-        self.image_cache = self.image  # Чтоб не None
+        self.image = self.type_image # Чтоб не None
         self.avaliable_places = []
         for i in range(len(self.game.current_room.map)):
             for j in range(len(self.game.current_room.map[i])):
@@ -215,9 +248,9 @@ class Ghost(Creature):
         self.direction = randint(0, 3)
 
     def die(self):
-        self.image_cache = self.image
-        self.image = self.dead
-        super().die()
+        if self.is_alive:
+            self.image = self.dead
+            super().die()
 
     def draw(self):
         if self.is_alive:
@@ -227,13 +260,13 @@ class Ghost(Creature):
             eyecolor = Color.LIGHT_BLUE
         eye_xc, eye_yc = 0, 0
         if self.x > self.target_pos[0]:
-            eye_xc = 1
-        elif self.x < self.target_pos[0]:
             eye_xc = -1
+        elif self.x < self.target_pos[0]:
+            eye_xc = 1
         if self.y > self.target_pos[1]:
-            eye_yc = 1
-        elif self.y < self.target_pos[1]:
             eye_yc = -1
+        elif self.y < self.target_pos[1]:
+            eye_yc = 1
         pygame.draw.circle(self.game.screen, eyecolor, (self.x-self.eye_dist, self.y), 3)
         pygame.draw.circle(self.game.screen, eyecolor, (self.x+self.eye_dist, self.y), 3)
         pygame.draw.circle(self.game.screen, Color.DARK_RED, (self.x-self.eye_dist+eye_xc, self.y+eye_yc), 1)
@@ -320,8 +353,10 @@ class Spawner(BasicObject):
             self.creature.creation()
             self.creature.set_pos(*self.pos)
             self.creature.spawner = self
-            self.game.current_room.toDraw.append(self.creature)
-            self.game.current_room.eventListeners.append(self.creature)
+            if not self.creature in self.game.current_room.toDraw:
+                self.game.current_room.toDraw.append(self.creature)
+            if not self.creature in self.game.current_room.eventListeners:
+                self.game.current_room.eventListeners.append(self.creature)
 
     def spawn(self, delay: int = 0):
         self.delay = delay
@@ -420,11 +455,10 @@ class EctoWall(Drawable):
     def __init__(self, game: Game, x: int = 0, y: int = 0):
         super().__init__(game, x, y)
         self.image = pygame.Surface((30, 30), pygame.SRCALPHA)
-        pygame.draw.line(self.image, Color.BLUE, (0, 15), (30, 15), self.width)
+        pygame.draw.line(self.image, Color.LIGHT_BLUE, (0, 15), (30, 15), self.width)
 
 
 class Paclives(Drawable):
-
     def __init__(self, game: Game, x: int = 0, y: int = 0, offset: (int, int) = (0, 0)):
         super().__init__(game, x, y, offset)
         self.image = pygame.image.load("images/pacman_small.png")
@@ -446,3 +480,20 @@ class Paclives(Drawable):
     def remove_life(self):
         if len(self.lives):
             self.lives.pop()
+
+
+# Ghosts
+class Inky(Ghost):
+    image = pygame.image.load("images/blue.png")
+
+
+class Blinky(Ghost):
+    image = pygame.image.load("images/red.png")
+
+
+class Pinky(Ghost):
+    image = pygame.image.load("images/blue.png")
+
+
+class Clyde(Ghost):
+    image = pygame.image.load("images/yellow.png")

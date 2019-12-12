@@ -65,6 +65,7 @@ class Game:
                 self.current_room.draw()
                 pygame.display.flip()
                 self.counter += 1
+                pygame.time.delay(8)
             if not self.current_room is self.preload_room:
                 self.current_room = self.preload_room
                 self.current_room.creation()
@@ -184,7 +185,7 @@ class Creature(Drawable):
     def get_pos(self):
         return self.x, self.y
 
-    def dynamic_collision_test(self, x:int, y:int, others: list) -> list:
+    def dynamic_collision_test(self, x: int, y: int, others: list) -> list:
         return [e for e in others if (x-e.x)**2+(y-e.y)**2 <= 30**2]
 
     def may_collide_with(self, x: int, y: int) -> list:
