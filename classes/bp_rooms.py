@@ -192,10 +192,10 @@ class Final(Room):
                            pos=(self.game.size[0] // 2, self.game.size[1] - self.game.size[1] // 3 + 45),
                            centrate=(True, True))
         end_text = Text(self.game, text='EXIT GAME', color=Color.DARK_RED,
-                        pos=(self.game.size[0] // 2, self.game.size[1] - self.game.size[1] // 3 + 90),
+                        pos=(self.game.size[0] // 2, self.game.size[1] - self.game.size[1] // 3 + 135),
                         centrate=(True, True))
         records = Text(self.game, text='Show records', color=Color.YELLOW,
-                       pos=(self.game.size[0] // 2, self.game.size[1] - self.game.size[1] // 3 + 135),
+                       pos=(self.game.size[0] // 2, self.game.size[1] - self.game.size[1] // 3 + 90),
                        centrate=(True, True))
         menu = Menu(self.game)
         menu_btn = Button(self.game, start_text, Color.BLACK if not is_victory else Color.BROWN, Color.DARK_GREEN, \
