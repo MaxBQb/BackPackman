@@ -184,8 +184,8 @@ class PacmanDead(Creature):
         self.dead_animation_counter = 0
 
     def draw(self):
-        if self.dead_animation_counter <= 80:
-            self.image = self.images[self.dead_animation_counter // 10 % len(self.images)]
+        if self.dead_animation_counter < 80:
+            self.image = self.images[self.dead_animation_counter // 10]
             self.dead_animation_counter += 1
             Drawable.draw(self)
         else:
@@ -197,7 +197,6 @@ class PacmanDead(Creature):
 
 class Ghost(Creature):
     vulnerable_steps = 720
-    clyde = pygame.image.load("images/yellow.png")
     vuln = pygame.image.load("images/vuln.png")
     dead = pygame.image.load("images/eyes.png")
     eye_dist = 6  # Растояние от глаза до середины
@@ -213,7 +212,7 @@ class Ghost(Creature):
         self.type_image = self.image # Чтоб не None
         self.avaliable_places = []
 
-    def step(self):
+    def step(self, rcount = 0):
         if self.vulnerable and\
            self.vulnerable_begin+self.vulnerable_steps <= self.game.counter:
             self.image = self.type_image
@@ -246,7 +245,8 @@ class Ghost(Creature):
                 self.direction = 1 if self.vulnerable^(self.game.current_room.pacman.x < self.x) else 3
             else:
                 self.direction = randint(0, 3)
-            self.step()
+            if rcount <= 5:  # защита от рекурсопакалипсиса...
+                self.step(rcount+1)
         self.target_pos = (self.game.current_room.pacman.x,
                            self.game.current_room.pacman.y)
 
@@ -291,15 +291,15 @@ class Ghost(Creature):
             eyecolor = Color.WHITE
         else:
             eyecolor = Color.LIGHT_BLUE
-        eye_xc, eye_yc = 0, 0
-        if self.x > self.target_pos[0]:
-            eye_xc = -1
-        elif self.x < self.target_pos[0]:
-            eye_xc = 1
-        if self.y > self.target_pos[1]:
-            eye_yc = -1
-        elif self.y < self.target_pos[1]:
-            eye_yc = 1
+        eye_xc, eye_yc = self.directions[self.direction]
+        # if self.x > self.target_pos[0]:
+        #     eye_xc = -2
+        # elif self.x < self.target_pos[0]:
+        #     eye_xc = 2
+        # if self.y > self.target_pos[1]:
+        #     eye_yc = -2
+        # elif self.y < self.target_pos[1]:
+        #     eye_yc = 2
         pygame.draw.circle(self.game.screen, eyecolor, (self.x-self.eye_dist, self.y), 5)
         pygame.draw.circle(self.game.screen, eyecolor, (self.x+self.eye_dist, self.y), 5)
         pygame.draw.circle(self.game.screen, Color.DARK_RED, (self.x-self.eye_dist+eye_xc, self.y+eye_yc), 3)
