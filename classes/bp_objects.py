@@ -525,7 +525,7 @@ class Blinky(Ghost):
 
 
 class Pinky(Ghost):
-    image = pygame.image.load("images/blue.png")
+    image = pygame.image.load("images/pink.png")
 
 
 class Clyde(Ghost):
