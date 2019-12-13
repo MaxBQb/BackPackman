@@ -149,6 +149,8 @@ class Pacman(Creature):
         else:
             transit(self.game, rooms.Final(self.game, False))
         super().die()
+        d = PacmanDead(self.game, x=self.x, y=self.y)
+        self.game.current_room.toDraw.append(d)
 
     def draw(self):
         if self.eating:
@@ -162,6 +164,35 @@ class Pacman(Creature):
         self.image = pygame.transform.rotate(self.image, -90 if self.look_vertical else 0)
         Drawable.draw(self)
         self.image = im
+
+
+class PacmanDead(Creature):
+    images = [pygame.image.load(e) for e in [
+        "images/dead0.png",
+        "images/dead1.png",
+        "images/dead2.png",
+        "images/dead3.png",
+        "images/dead4.png",
+        "images/dead5.png",
+        "images/dead6.png",
+        "images/dead7.png",
+    ]]
+    image = images[0]
+
+    def __init__(self, game: Game, x: int = 0, y: int = 0):
+        super().__init__(game, x, y, (15, 15))
+        self.dead_animation_counter = 0
+
+    def draw(self):
+        if self.dead_animation_counter <= 80:
+            self.image = self.images[self.dead_animation_counter // 10 % len(self.images)]
+            self.dead_animation_counter += 1
+            Drawable.draw(self)
+        else:
+            self.die()
+
+    def die(self):
+        self.game.current_room.toDraw.remove(self)
 
 
 class Ghost(Creature):
