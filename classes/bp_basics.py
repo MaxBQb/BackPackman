@@ -1,3 +1,5 @@
+from collections import deque
+
 import pygame
 from sys import exit
 from classes.Color_Scheme import *
@@ -35,16 +37,23 @@ class Game:
         self.records.read()
         self.pause_screen = pygame.Surface(self.size, pygame.SRCALPHA)
         self.pause_screen.fill((0, 0, 0, 160))
+        pygame.draw.circle(self.pause_screen, (*Color.DARK_RED, 200), (w//2, h//2), 75)
+        pygame.draw.rect(self.pause_screen, Color.LIGHT_BLUE, (w//2-30, h//2-45, 20, 90))
+        pygame.draw.rect(self.pause_screen, Color.LIGHT_BLUE, (w//2+10, h//2-45, 20, 90))
 
     def process_events(self):
         for e in pygame.event.get():
             if e.type == pygame.QUIT:
                 self.GameOver = True
-            if e.type == pygame.KEYUP and e.key == pygame.K_SPACE \
-                    and self.current_room.pause_enabled:
-                if not self.Paused:
-                    self.pause()
-                self.Paused = not self.Paused
+            if e.type == pygame.KEYUP:
+                if e.key == pygame.K_ESCAPE and\
+                        self.current_room.prev_room:
+                    transit(self, self.current_room.prev_room)
+                elif e.key in [pygame.K_SPACE, pygame.K_p] and \
+                        self.current_room.pause_enabled:
+                    if not self.Paused:
+                        self.pause()
+                    self.Paused = not self.Paused
             if not self.Paused:
                 self.current_room.interact(e)
 
@@ -282,33 +291,43 @@ class Records:
         self.save()
 
 
-class Graph:
-    def __init__(self):
+class Node:
+    def __init__(self, pos):
+        self.pos = pos
         self.neighbors = []
 
-    def connect(self, other, both: bool = True):
-        if not isinstance(other, Graph):
-            raise TypeError(f"Cannot connect {self.__class__} and {other.__class__}")
+    def connect(self, other):
         self.neighbors.append(other)
-        if both:
-            other.neighbors.append(self)
+        other.neighbors.append(self)
 
 
 class Path:
-    def __init__(self, mmap: list):
-        n = len(mmap)
-        m = len(mmap[0])
-        # Void graph
+    def __init__(self, maze):
+        self.maze = maze
 
-        self.map = [[Graph() for _ in range(m)] for i in range(n)]
-        for i in range(n):
-            for j in range(m):
-                if None in mmap[i][j]:
-                    if i > 0 and None in mmap[i-1][j]:
-                        self.map[i][j].connect(self.map[i-1][j])
-                    if j > 0 and None in mmap[i][j-1]:
-                        self.map[i][j].connect(self.map[i][j-1])
-                    if i < n-1 and None in mmap[i+1][j]:
-                        self.map[i][j].connect(self.map[i+1][j])
-                    if j > m-1 and None in mmap[i][j+1]:
-                        self.map[i][j].connect(self.map[i][j+1])
+    def find(self, start, goal):
+        graph = [[Node((j*30+15, i*30+15)) for j in range(len(self.maze[i]))] for i in range(len(self.maze))]
+        for i in range(len(self.maze)-1):
+            for j in range(len(self.maze[i])-1):
+                if not True in [*self.maze[i][j], *self.maze[i+1][j]]:
+                    graph[i][j].connect(graph[i+1][j])
+                if not True in [*self.maze[i][j], *self.maze[i][j+1]]:
+                    graph[i][j].connect(graph[i][j+1])
+        start = graph[start[1]//30][start[0]//30]
+        goal = graph[goal[1]//30][goal[0]//30]
+        if start == goal:
+            return [start]
+        visited = {start}
+        queue = deque([(start, [])])
+
+        while queue:
+            current, path = queue.popleft()
+            visited.add(current)
+            for neighbor in current.neighbors:
+                if neighbor == goal:
+                    return path + [current, neighbor]
+                if neighbor in visited:
+                    continue
+                queue.append((neighbor, path + [current]))
+                visited.add(neighbor)
+        return []

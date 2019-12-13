@@ -29,7 +29,7 @@ class Pacman(Creature):
         if e.type == pygame.KEYDOWN:
             if e.key == pygame.K_g:
                 for g in self.game.current_room.ghosts:
-                    g.die()
+                    g.vulnerable_mode()
             if e.key == pygame.K_v:
                 transit(self.game, rooms.Final(self.game, True))
             if e.key in (119, 97, 115, 100) and (self.move_cache == [] or self.move_cache[-1] != e.key) and len(
@@ -135,6 +135,7 @@ class Pacman(Creature):
     def die(self):
         if not self.is_alive:
             return
+        super().die()
         self.game.current_room.paclives.remove_life()
         self.game.current_room.toDraw.remove(self)
         self.game.current_room.eventListeners.remove(self)
@@ -148,7 +149,6 @@ class Pacman(Creature):
                 e.spawner.spawn(120)
         else:
             transit(self.game, rooms.Final(self.game, False))
-        super().die()
         d = PacmanDead(self.game, x=self.x, y=self.y)
         self.game.current_room.toDraw.append(d)
 
@@ -166,7 +166,8 @@ class Pacman(Creature):
         self.image = im
 
 
-class PacmanDead(Creature):
+class PacmanDead(Drawable):
+    slowFactor = 10
     images = [pygame.image.load(e) for e in [
         "images/dead0.png",
         "images/dead1.png",
@@ -177,6 +178,7 @@ class PacmanDead(Creature):
         "images/dead6.png",
         "images/dead7.png",
     ]]
+    frame_states = slowFactor*len(images)
     image = images[0]
 
     def __init__(self, game: Game, x: int = 0, y: int = 0):
@@ -184,10 +186,10 @@ class PacmanDead(Creature):
         self.dead_animation_counter = 0
 
     def draw(self):
-        if self.dead_animation_counter < 80:
-            self.image = self.images[self.dead_animation_counter // 10]
+        if self.dead_animation_counter < self.frame_states:
+            self.image = self.images[self.dead_animation_counter // self.slowFactor]
             self.dead_animation_counter += 1
-            Drawable.draw(self)
+            super().draw()
         else:
             self.die()
 
@@ -199,56 +201,56 @@ class Ghost(Creature):
     vulnerable_steps = 720
     vuln = pygame.image.load("images/vuln.png")
     dead = pygame.image.load("images/eyes.png")
-    eye_dist = 6  # Растояние от глаза до середины
+    eye_dist = 5  # Растояние от глаза до середины
     directions = [(0, -1), (-1, 0), (0, 1), (1, 0)]
 
-    def __init__(self, game: Game, x: int = 0, y: int = 0):
+    def __init__(self, game: Game, x: int = 0, y: int = 0, target=None):
         super().__init__(game, x, y, (15, 15))
         self.vulnerable = False
         self.vulnerable_begin = 0
-        self.direction = 0
         self.speed = 1
-        self.target_pos = (self.x, self.y)
-        self.type_image = self.image # Чтоб не None
-        self.avaliable_places = []
+        self.eye_color = Color.WHITE
+        self.eye_rad = 3  # Размер зрачка
+        self.update_pos = True
+        self.target = target
+        self.npp = None  # Nearest Point of Path
+        self.type_image = self.image
 
-    def step(self, rcount = 0):
-        if self.vulnerable and\
-           self.vulnerable_begin+self.vulnerable_steps <= self.game.counter:
-            self.image = self.type_image
-            self.vulnerable = False
-        ''' Directions is counter-clockwise
-                 [up 0]
-            [left 1] [right 3]
-                 [down 2]
-        '''
-        if not self.x % 15 and not self.y % 15 and not randint(0, 2) or\
-            self.x == self.game.current_room.pacman.x or\
-            self.y == self.game.current_room.pacman.y:
-            if self.x == self.game.current_room.pacman.x:
-                tmpd = 0 if self.vulnerable^(self.game.current_room.pacman.y < self.y) else 2
-            elif self.y == self.game.current_room.pacman.y:
-                tmpd = 1 if self.vulnerable^(self.game.current_room.pacman.x < self.x) else 3
+    def step(self):
+        if self.vulnerable:
+            if self.vulnerable_begin + self.vulnerable_steps <= self.game.counter:
+                self.image = self.type_image
+                self.vulnerable = False
+                self.update_pos = True
+                self.target = self.game.current_room.pacman
+            elif self.vulnerable_begin + self.vulnerable_steps - self.game.counter < 300:
+                if not self.game.counter % (6+(self.vulnerable_begin + self.vulnerable_steps - self.game.counter)//30):
+                    self.image = self.type_image if self.image is self.vuln else self.vuln
+
+        if (self.x, self.y) == self.npp and self.update_pos is 0:
+            self.update_pos = True
+
+        if not self.npp or (self.x, self.y) == self.npp and self.update_pos is True:
+            self.npp = self.game.current_room.path.find((self.x, self.y),
+                                                        (self.target.x, self.target.y))
+            if len(self.npp) > 1:
+                self.npp = self.npp[1]
+                self.npp = self.npp.pos
+                self.update_pos = 0
             else:
-                tmpd = randint(0, 3)
-            # Попытка сменить направление под прямым углом
-            if tmpd % 2 == self.direction % 2:
-                tmpd = (tmpd+1)%4
-            mx_c, my_c = self.directions[tmpd]
-            if self.can_move(self.speed * mx_c, self.speed * my_c):
-                self.direction = tmpd
-        mx_c, my_c = self.directions[self.direction]
-        if not self.move(self.speed * mx_c, self.speed * my_c):
-            if self.x == self.game.current_room.pacman.x:
-                self.direction = 0 if self.vulnerable^(self.game.current_room.pacman.y < self.y) else 2
-            elif self.y == self.game.current_room.pacman.y:
-                self.direction = 1 if self.vulnerable^(self.game.current_room.pacman.x < self.x) else 3
-            else:
-                self.direction = randint(0, 3)
-            if rcount <= 5:  # защита от рекурсопакалипсиса...
-                self.step(rcount+1)
-        self.target_pos = (self.game.current_room.pacman.x,
-                           self.game.current_room.pacman.y)
+                self.npp = (self.x, self.y)
+                self.update_pos = False
+        shift_x, shift_y = 0, 0
+        if self.x > self.npp[0]:
+            shift_x = -1
+        elif self.x < self.npp[0]:
+            shift_x = 1
+        elif self.y > self.npp[1]:
+            shift_y = -1
+        elif self.y < self.npp[1]:
+            shift_y = 1
+
+        self.move(self.speed*shift_x, self.speed*shift_y)
 
     def collide(self, others, react: bool = True) -> bool:
         if not super().collide(others):
@@ -264,46 +266,52 @@ class Ghost(Creature):
             self.game.current_room.combos = 0
             self.vulnerable = True
             self.image = self.vuln
+            self.update_pos = True
+            self.target = self.spawner
         self.vulnerable_begin = self.game.counter
 
     def creation(self):
         super().creation()
         self.vulnerable = False
         self.speed = 1
+        self.npp = None
+        self.eye_color = Color.WHITE
+        self.eye_rad = 3
+        self.update_pos = True
         self.dynamic_coll_check = [self.game.current_room.pacman]
-        self.target_pos = (self.x, self.y)
-        self.image = self.type_image # Чтоб не None
-        self.avaliable_places = []
-        for i in range(len(self.game.current_room.map)):
-            for j in range(len(self.game.current_room.map[i])):
-                if None in self.game.current_room.map[i][j]:
-                    self.avaliable_places += [(j * 30 + 15, i * 30 + 15)]
-        self.direction = randint(0, 3)
+        self.target = self.game.current_room.pacman
+        self.image = self.type_image
 
     def die(self):
         if self.is_alive:
+            self.speed = 5
+            # Немного костыльное решение, но я сплю уже
+            self.x = (self.x//30)*30+15
+            self.y = (self.y//30)*30+15
             self.image = self.dead
+            self.target = self.spawner
+            self.update_pos = True
+            self.eye_color = Color.LIGHT_BLUE
+            self.eye_rad = 2
             super().die()
 
     def draw(self):
         if self.is_alive:
             super().draw()
-            eyecolor = Color.WHITE
-        else:
-            eyecolor = Color.LIGHT_BLUE
-        eye_xc, eye_yc = self.directions[self.direction]
-        # if self.x > self.target_pos[0]:
-        #     eye_xc = -2
-        # elif self.x < self.target_pos[0]:
-        #     eye_xc = 2
-        # if self.y > self.target_pos[1]:
-        #     eye_yc = -2
-        # elif self.y < self.target_pos[1]:
-        #     eye_yc = 2
-        pygame.draw.circle(self.game.screen, eyecolor, (self.x-self.eye_dist, self.y), 5)
-        pygame.draw.circle(self.game.screen, eyecolor, (self.x+self.eye_dist, self.y), 5)
-        pygame.draw.circle(self.game.screen, Color.DARK_RED, (self.x-self.eye_dist+eye_xc, self.y+eye_yc), 3)
-        pygame.draw.circle(self.game.screen, Color.DARK_RED, (self.x+self.eye_dist+eye_xc, self.y+eye_yc), 3)
+        eye_xc, eye_yc = 0, 0
+        if self.x > self.target.x:
+            eye_xc = -1
+        elif self.x < self.target.x:
+            eye_xc = 1
+        if self.y > self.target.y:
+            eye_yc = -2
+        elif self.y < self.target.y:
+            eye_yc = 2
+
+        pygame.draw.circle(self.game.screen, self.eye_color, (self.x-self.eye_dist, self.y-2), 4)
+        pygame.draw.circle(self.game.screen, self.eye_color, (self.x+self.eye_dist, self.y-2), 4)
+        pygame.draw.circle(self.game.screen, Color.BLACK, (self.x-self.eye_dist+eye_xc, self.y+eye_yc-2), self.eye_rad)
+        pygame.draw.circle(self.game.screen, Color.BLACK, (self.x+self.eye_dist+eye_xc, self.y+eye_yc-2), self.eye_rad)
 
 
 class Seed(Creature):
@@ -370,6 +378,7 @@ class Spawner(BasicObject):
         super().__init__(game)
         self.delay = delay
         self.pos = pos
+        self.x, self.y = pos
         self.spawn_request_time = 0
         self.can_spawn = True
         creature.spawner = self

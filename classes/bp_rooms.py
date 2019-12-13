@@ -224,8 +224,7 @@ class Final(Room):
 
 class GameRecords(Room):
     def __init__(self, game, prev_room: Room = None):
-        super().__init__(game)
-        self.prev_room = prev_room
+        super().__init__(game, prev_room, pause_enabled=False)
         text = Text(self.game, text='highest scores:', font_size=25,
                     pos=(self.game.size[0] // 2, 50), centrate=(True, True))
         self.toDraw.append(text)
