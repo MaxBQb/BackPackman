@@ -7,8 +7,10 @@ from random import randint
 class Pacman(Creature):
     images = [pygame.image.load(e) for e in [
         "images/pacman.png",
+        "images/pacman_closed0.png",
         "images/pacman_closed1.png",
         "images/pacman_closed2.png",
+        "images/pacman_closed3.png",
     ]]
     images += reversed(images)
     image = images[0]
