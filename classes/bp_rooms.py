@@ -40,7 +40,8 @@ class MainField(Room):
         super().__init__(game, prev_room)
         # инициализация элементов поля
         self.lbl_score = Text(self.game, text="Score: {}".format(self.game.score),
-                              pos=(self.game.size[0] // 2, self.game.size[1] - 30), centrate=(True, False))
+                              pos=(self.game.size[0] - self.game.size[0] //3, self.game.size[1] - 30), centrate=(True, False))
+        self.show_highest_score()
         self.paclives = Paclives(game)
         self.ghosts = []  # для призраков
         self.pacman = None
@@ -154,7 +155,16 @@ class MainField(Room):
         self.update_score()
 
     def update_score(self):
-        self.lbl_score.update_text("Score: {:02d}".format(self.game.score))
+        self.lbl_score.update_text("Score: {:03d}".format(self.game.score))
+
+    def show_highest_score(self):
+        if self.game.records.stats:
+            self.highest_score = Text(self.game, text="Highest: {:03d}".format(max(self.game.records.stats)),
+                                  pos=(200, self.game.size[1] - 30), centrate=(False, False))
+        else:
+            self.highest_score = Text(self.game, text="Highest: 000",
+                                  pos=(200, self.game.size[1] - 30), centrate=(False, False))
+        self.toDrawStatic.append(self.highest_score)
 
     def creation(self):
         self.game.score = 0
@@ -232,7 +242,7 @@ class GameRecords(Room):
         shift = 0
         if self.game.records.stats:
             for item in self.game.records.stats:
-                text = Text(self.game, text=str(item), pos=(self.game.size[0] // 2, self.game.size[1] / 3 + shift),
+                text = Text(self.game, text="{:03d}".format(item), pos=(self.game.size[0] // 2, self.game.size[1] / 3 + shift),
                             centrate=(True, True))
                 shift += text.get_size()[1] + 10
                 self.toDraw.append(text)
