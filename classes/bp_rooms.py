@@ -154,7 +154,7 @@ class MainField(Room):
         self.update_score()
 
     def update_score(self):
-        self.lbl_score.update_text("Score: {}".format(self.game.score))
+        self.lbl_score.update_text("Score: {:02d}".format(self.game.score))
 
     def creation(self):
         self.game.score = 0
@@ -176,16 +176,16 @@ class Final(Room):
         super().__init__(game, pause_enabled=False, background= Color.BROWN if is_victory else Color.BLACK)
         title = Text(game=self.game, text='YOU WON!' if is_victory else'GAME OVER', font_size=48, color=Color.GREEN,
                      pos=(self.game.size[0] // 2, self.game.size[1] // 5), centrate=(True, False))
-        self.game.records.add(self.game.score)
         self.next_room = GameRecords(game, self)
 
         record_text = Text(game=self.game, text='Your score is {}'.format(self.game.score),
                            pos=(self.game.size[0] // 2, self.game.size[1] / 2 - 50), centrate=(True, True))
-        if self.game.score > max(self.game.records.stats):
-            new_record = Text(game=self.game, text='This is a new record!', font_size=20,
+        if game.records.stats == [] or game.score > game.records.stats[0]:
+            new_record = Text(game=game, text='This is a new record!', font_size=20,
                               pos=(self.game.size[0] // 2, self.game.size[1] / 2 - 30 + record_text.get_size()[1]),
                               color=Color.YELLOW, centrate=(True, True))
             self.toDraw.append(new_record)
+            game.records.add(game.score)  # Только новые рекорды заносятся
         start_text = Text(self.game, text='MAIN MENU', color=Color.DARK_GREEN,
                           pos=(self.game.size[0] // 2, self.game.size[1] - self.game.size[1] // 3),
                           centrate=(True, True))
@@ -213,15 +213,23 @@ class Final(Room):
 
 
 class GameRecords(Room):
-
     def __init__(self, game, prev_room: Room = None):
         super().__init__(game)
         self.prev_room = prev_room
-        shift = 0
         text = Text(self.game, text='highest scores:', font_size=25,
                     pos=(self.game.size[0] // 2, 50), centrate=(True, True))
         self.toDraw.append(text)
 
+        back_text = Text(self.game, text='Back', color=Color.DARK_GREEN,
+                         pos=(self.game.size[0] // 2, self.game.size[1] - self.game.size[1] // 4),
+                         centrate=(True, True))
+        back_btn = Button(self.game, back_text, Color.BLACK, Color.DARK_GREEN, \
+                          Action(transit, game=self.game, room=self.prev_room))
+        self.toDraw += [back_text, back_btn]
+        self.eventListeners += [back_btn]
+
+    def creation(self):
+        shift = 0
         if self.game.records.stats:
             for item in self.game.records.stats:
                 text = Text(self.game, text=str(item), pos=(self.game.size[0] // 2, self.game.size[1] / 3 + shift),
@@ -233,11 +241,3 @@ class GameRecords(Room):
                       pos=(self.game.size[0] // 2, self.game.size[1] / 2),
                       centrate=(True, True))
             self.toDraw.append(no)
-
-        back_text = Text(self.game, text='Back', color=Color.DARK_GREEN,
-                         pos=(self.game.size[0] // 2, self.game.size[1] - self.game.size[1] // 4),
-                         centrate=(True, True))
-        back_btn = Button(self.game, back_text, Color.BLACK, Color.DARK_GREEN, \
-                          Action(transit, game=self.game, room=self.prev_room))
-        self.toDraw += [back_text, back_btn]
-        self.eventListeners += [back_btn]

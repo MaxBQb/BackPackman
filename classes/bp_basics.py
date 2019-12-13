@@ -230,7 +230,7 @@ class Creature(Drawable):
         if avalanche:
             for c in collisions:
                 if isinstance(c, Creature):
-                    c.collide(collisions+[self])
+                    c.collide([self])
         return self.collide(collisions, avalanche)
 
     def set_pos(self, x, y) -> bool:
@@ -279,6 +279,7 @@ class Records:
     def add(self, score: int):
         self.stats.append(score)
         self.stats = sorted(self.stats, reverse=True)[:10]
+        self.save()
 
 
 class Graph:

@@ -167,7 +167,7 @@ class Ghost(Creature):
     clyde = pygame.image.load("images/yellow.png")
     vuln = pygame.image.load("images/vuln.png")
     dead = pygame.image.load("images/eyes.png")
-    eye_dist = 5  # Растояние от глаза до середины
+    eye_dist = 6  # Растояние от глаза до середины
     directions = [(0, -1), (-1, 0), (0, 1), (1, 0)]
 
     def __init__(self, game: Game, x: int = 0, y: int = 0):
@@ -267,10 +267,10 @@ class Ghost(Creature):
             eye_yc = -1
         elif self.y < self.target_pos[1]:
             eye_yc = 1
-        pygame.draw.circle(self.game.screen, eyecolor, (self.x-self.eye_dist, self.y), 3)
-        pygame.draw.circle(self.game.screen, eyecolor, (self.x+self.eye_dist, self.y), 3)
-        pygame.draw.circle(self.game.screen, Color.DARK_RED, (self.x-self.eye_dist+eye_xc, self.y+eye_yc), 1)
-        pygame.draw.circle(self.game.screen, Color.DARK_RED, (self.x+self.eye_dist+eye_xc, self.y+eye_yc), 1)
+        pygame.draw.circle(self.game.screen, eyecolor, (self.x-self.eye_dist, self.y), 5)
+        pygame.draw.circle(self.game.screen, eyecolor, (self.x+self.eye_dist, self.y), 5)
+        pygame.draw.circle(self.game.screen, Color.DARK_RED, (self.x-self.eye_dist+eye_xc, self.y+eye_yc), 3)
+        pygame.draw.circle(self.game.screen, Color.DARK_RED, (self.x+self.eye_dist+eye_xc, self.y+eye_yc), 3)
 
 
 class Seed(Creature):
