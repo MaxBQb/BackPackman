@@ -152,7 +152,7 @@ class Pacman(Creature):
             self.spawner.spawn(10+PacmanDead.frame_states)
             for e in self.game.current_room.ghosts:
                 e.spawner.spawn(10+PacmanDead.frame_states)
-        d = PacmanDead(self.game, x=self.x, y=self.y)
+        d = PacmanDead(self.game, self.x, self.y, self.look_forward, self.look_vertical)
         self.game.current_room.toDraw.append(d)
 
     def draw(self):
@@ -166,7 +166,7 @@ class Pacman(Creature):
             not self.look_forward, False)
         self.image = pygame.transform.rotate(self.image, -90 if self.look_vertical else 0)
         self.image = pygame.transform.scale(self.image, (self.size, self.size))
-        Drawable.draw(self)
+        super().draw()
         self.image = im
 
 
@@ -185,14 +185,20 @@ class PacmanDead(Drawable):
     frame_states = slowFactor*len(images)
     image = images[0]
 
-    def __init__(self, game: Game, x: int = 0, y: int = 0):
+    def __init__(self, game: Game, x: int = 0, y: int = 0, look_forward: bool = True, look_vertical: bool = True):
         super().__init__(game, x, y, (15, 15))
+        self.look_forward, self.look_vertical = look_forward, look_vertical
         self.dead_animation_counter = 0
 
     def draw(self):
         if self.dead_animation_counter < self.frame_states:
             self.image = self.images[self.dead_animation_counter // self.slowFactor]
             self.dead_animation_counter += 1
+            self.image = pygame.transform.flip(
+                self.image,
+                self.look_forward if self.look_vertical else
+                not self.look_forward, False)
+            self.image = pygame.transform.rotate(self.image, -90 if self.look_vertical else 0)
             super().draw()
         else:
             self.die()
@@ -205,6 +211,7 @@ class PacmanDead(Drawable):
 
 class Ghost(Creature):
     vulnerable_steps = 720
+    occupant = True
     vuln = pygame.image.load("images/vuln.png")
     dead = pygame.image.load("images/eyes.png")
     eye_dist = 5  # Растояние от глаза до середины
@@ -214,6 +221,7 @@ class Ghost(Creature):
         self.vulnerable = False
         self.vulnerable_begin = 0
         self.speed = 0
+        self.path = None
         self.eye_color = Color.WHITE
         self.eye_rad = 3  # Размер зрачка
         self.update_pos = True
@@ -232,45 +240,63 @@ class Ghost(Creature):
             elif self.vulnerable_begin + self.vulnerable_steps - self.game.counter < 300:
                 if not self.game.counter % (6+(self.vulnerable_begin + self.vulnerable_steps - self.game.counter)//30):
                     self.image = self.type_image if self.image is self.vuln else self.vuln
-        if (self.x, self.y) == self.npp and self.update_pos is 0:
-            self.update_pos = True
-
-        if self.update_pos is True:
-            self.npp = self.game.current_room.path.find((self.x, self.y),
-                                                        (self.target.x, self.target.y))
-            if len(self.npp) > 1:
-                self.npp = self.npp[1]
-                self.npp = self.npp.pos
-                self.update_pos = 0
-            else:
-                self.npp = (self.x, self.y)
-                self.update_pos = False
+        self.path_react(not self.is_alive)  # Логика ходьбы
         '''
         Далее приведение пытается приблизиться к 
         локальной цели, причём, оно не должно пролететь мимо цели
         '''
         shift_x, shift_y = 0, 0
-        if self.x > self.npp[0]:
-            if self.x - self.speed < self.npp[0]:
-                shift_x = self.npp[0] - self.x
+        if self.x > self.npp.x:
+            if self.x - self.speed < self.npp.x:
+                shift_x = self.npp.x - self.x
             else:
                 shift_x = -self.speed
-        elif self.x < self.npp[0]:
-            if self.x + self.speed > self.npp[0]:
-                shift_x = self.npp[0] - self.x
+        elif self.x < self.npp.x:
+            if self.x + self.speed > self.npp.x:
+                shift_x = self.npp.x - self.x
             else:
                 shift_x = self.speed
-        elif self.y > self.npp[1]:
-            if self.y - self.speed < self.npp[1]:
-                shift_y = self.npp[1] - self.y
+        elif self.y > self.npp.y:
+            if self.y - self.speed < self.npp.y:
+                shift_y = self.npp.y - self.y
             else:
                 shift_y = -self.speed
-        elif self.y < self.npp[1]:
-            if self.y + self.speed > self.npp[1]:
-                shift_y = self.npp[1] - self.y
+        elif self.y < self.npp.y:
+            if self.y + self.speed > self.npp.y:
+                shift_y = self.npp.y - self.y
             else:
                 shift_y = self.speed
         self.move(shift_x, shift_y)
+
+    def path_react(self, ignore_others=False):
+        self.path.step()
+
+        if not ignore_others:
+            if self.vulnerable:
+                self.path.occupy_pos(*self.game.current_room.pacman.get_pos())
+            else:
+                for e in self.game.current_room.ghosts:
+                    if e is not self and e.occupant:
+                        self.path.occupy_pos(*e.get_pos())
+
+        if self.npp and (self.x, self.y) == self.npp.pos and self.update_pos is 0:
+            self.update_pos = True
+
+        if self.update_pos:
+            self.npp = self.path.find(self.get_pos(), (self.target.x, self.target.y))
+            if len(self.npp) > 1:
+                self.npp = self.npp[1]
+                self.update_pos = 0
+            elif self.npp:
+                self.npp = self.npp[0]
+                self.update_pos = False
+            elif self.update_pos is True:
+                self.update_pos = 1
+                self.path_react(True)
+                return
+            else:
+                self.npp = Node((self.x, self.y))
+                self.update_pos = False
 
     def collide(self, others, react: bool = True) -> bool:
         if not super().collide(others):
@@ -295,6 +321,7 @@ class Ghost(Creature):
         self.vulnerable = False
         self.speed = 1
         self.npp = None
+        self.path = Path(self.game, self.game.current_room.map)
         self.eye_color = Color.WHITE
         self.eye_rad = 3
         self.update_pos = True
@@ -543,10 +570,12 @@ class Paclives(Drawable):
 
 # Ghosts
 class Inky(Ghost):
+    occupant = randint(0, 3)
     image = pygame.image.load("images/blue.png")
 
 
 class Blinky(Ghost):
+    occupant = randint(0, 1)
     image = pygame.image.load("images/red.png")
 
 
@@ -555,4 +584,5 @@ class Pinky(Ghost):
 
 
 class Clyde(Ghost):
+    occupant = False
     image = pygame.image.load("images/yellow.png")

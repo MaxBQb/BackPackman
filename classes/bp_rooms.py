@@ -47,7 +47,6 @@ class MainField(Room):
         self.pacman = None
         self.combos = 0
         self.seeds_count = 0
-        self.path = None
         self.map = [[list() for j in range(28)] for i in range(24)]
         field = [
             "############################",
@@ -172,7 +171,6 @@ class MainField(Room):
         self.combos = 0
         self.update_score()
         self.prev_room.start_text.update_text('RESUME')
-        self.path = Path(self.map)
         super().creation()
 
 

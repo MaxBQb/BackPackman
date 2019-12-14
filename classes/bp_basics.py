@@ -297,18 +297,32 @@ class Records:
 class Node:
     def __init__(self, pos):
         self.pos = pos
+        self.x, self.y = pos
         self.neighbors = []
+        self.reserv = []
 
-    def is_neighbor(self, other):
-        return other in self.neighbors
+    def occupy(self):
+        self.reserv = self.neighbors[::]
+        for e in self.reserv:
+            self.disconnect(e)
+
+    def unoccupy(self):
+        for e in self.reserv:
+            self.connect(e)
+        self.reserv = []
 
     def connect(self, other):
         self.neighbors.append(other)
         other.neighbors.append(self)
 
+    def disconnect(self, other):
+        self.neighbors.remove(other)
+        other.neighbors.remove(self)
 
-class Path:
-    def __init__(self, maze):
+
+class Path(BasicObject):
+    def __init__(self, game: Game, maze):
+        super().__init__(game)
         self.graph = [[Node((j * 30 + 15, i * 30 + 15))
                       for j in range(len(maze[i]))]
                       for i in range(len(maze))]
@@ -319,6 +333,23 @@ class Path:
                     graph[i][j].connect(graph[i + 1][j])
                 if not True in [*maze[i][j], *maze[i][j + 1]]:
                     graph[i][j].connect(graph[i][j + 1])
+        self.occupied = []
+
+    def occupy(self, node: Node):
+        self.occupied.append(node)
+        node.occupy()
+
+    def occupy_pos(self, x: int, y:int):
+        x //= 30
+        y //= 30
+        self.occupy(self.graph[y][x])
+
+    def step(self):
+        if not self.occupied:
+            return
+        for e in self.occupied:
+            e.unoccupy()
+        self.occupied = []
 
     def find(self, start, goal):
         graph = self.graph
