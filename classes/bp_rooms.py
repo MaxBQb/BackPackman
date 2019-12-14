@@ -186,7 +186,7 @@ class Final(Room):
         super().__init__(game, pause_enabled=False, background= Color.BROWN if is_victory else Color.BLACK)
         title = Text(game=self.game, text='YOU WON!' if is_victory else'GAME OVER', font_size=48, color=Color.GREEN,
                      pos=(self.game.size[0] // 2, self.game.size[1] // 5), centrate=(True, False))
-        self.next_room = GameRecords(game, self)
+        gr = GameRecords(game, self)
 
         record_text = Text(game=self.game, text='Your score is {}'.format(self.game.score),
                            pos=(self.game.size[0] // 2, self.game.size[1] / 2 - 50), centrate=(True, True))
@@ -195,6 +195,7 @@ class Final(Room):
                               pos=(self.game.size[0] // 2, self.game.size[1] / 2 - 30 + record_text.get_size()[1]),
                               color=Color.YELLOW, centrate=(True, True))
             self.toDraw.append(new_record)
+        if not game.score in game.records.stats:
             game.records.add(game.score)  # Только новые рекорды заносятся
         start_text = Text(self.game, text='MAIN MENU', color=Color.DARK_GREEN,
                           pos=(self.game.size[0] // 2, self.game.size[1] - self.game.size[1] // 3),
@@ -209,12 +210,13 @@ class Final(Room):
                        pos=(self.game.size[0] // 2, self.game.size[1] - self.game.size[1] // 3 + 90),
                        centrate=(True, True))
         menu = Menu(self.game)
+        self.next_room = menu.next_room
         menu_btn = Button(self.game, start_text, Color.BLACK if not is_victory else Color.BROWN, Color.DARK_GREEN, \
                           Action(transit, game=self.game, room=menu))
         replay_btn = Button(self.game, replay_text, Color.BLACK if not is_victory else Color.BROWN, Color.ORANGE, \
                             Action(transit, game=self.game, room=menu.next_room))
         records_btn = Button(self.game, records, Color.BLACK if not is_victory else Color.BROWN, Color.YELLOW, \
-                             Action(transit, game=self.game, room=self.next_room))
+                             Action(transit, game=self.game, room=gr))
         exit_btn = Button(self.game, end_text, Color.BLACK if not is_victory else Color.BROWN, Color.DARK_RED, \
                           Action(self.game.quit))
 

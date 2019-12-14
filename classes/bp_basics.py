@@ -49,6 +49,9 @@ class Game:
                 if e.key == pygame.K_ESCAPE and\
                         self.current_room.prev_room:
                     transit(self, self.current_room.prev_room)
+                elif e.key == pygame.K_RETURN and\
+                        self.current_room.next_room:
+                    transit(self, self.current_room.next_room)
                 elif e.key in [pygame.K_SPACE, pygame.K_p] and \
                         self.current_room.pause_enabled:
                     if not self.Paused:
@@ -296,6 +299,9 @@ class Node:
         self.pos = pos
         self.neighbors = []
 
+    def is_neighbor(self, other):
+        return other in self.neighbors
+
     def connect(self, other):
         self.neighbors.append(other)
         other.neighbors.append(self)
@@ -303,16 +309,19 @@ class Node:
 
 class Path:
     def __init__(self, maze):
-        self.maze = maze
+        self.graph = [[Node((j * 30 + 15, i * 30 + 15))
+                      for j in range(len(maze[i]))]
+                      for i in range(len(maze))]
+        graph = self.graph
+        for i in range(len(maze) - 1):
+            for j in range(len(maze[i]) - 1):
+                if not True in [*maze[i][j], *maze[i + 1][j]]:
+                    graph[i][j].connect(graph[i + 1][j])
+                if not True in [*maze[i][j], *maze[i][j + 1]]:
+                    graph[i][j].connect(graph[i][j + 1])
 
     def find(self, start, goal):
-        graph = [[Node((j*30+15, i*30+15)) for j in range(len(self.maze[i]))] for i in range(len(self.maze))]
-        for i in range(len(self.maze)-1):
-            for j in range(len(self.maze[i])-1):
-                if not True in [*self.maze[i][j], *self.maze[i+1][j]]:
-                    graph[i][j].connect(graph[i+1][j])
-                if not True in [*self.maze[i][j], *self.maze[i][j+1]]:
-                    graph[i][j].connect(graph[i][j+1])
+        graph = self.graph
         start = graph[start[1]//30][start[0]//30]
         goal = graph[goal[1]//30][goal[0]//30]
         if start == goal:

@@ -17,6 +17,7 @@ class Pacman(Creature):
 
     def __init__(self, game: Game, x: int = 0, y: int = 0):
         super().__init__(game, x, y, (15, 15))
+        self.size = 0
         self.move_cache = []
         self.speed = 0
         self.eating = False
@@ -44,6 +45,9 @@ class Pacman(Creature):
                    ||
                   [mmd]
         '''
+        if self.size < 30:
+            self.size += 1
+            self.offset = (self.size//2, self.size//2)
         self.eating = False
         mmu = self.can_move(0, -self.speed)
         mmd = self.can_move(0, self.speed)
@@ -125,6 +129,7 @@ class Pacman(Creature):
     def creation(self):
         self.move_cache = []
         self.speed = 2
+        self.size = 0
         self.eating = False
         self.eat_animation_counter = 0
         self.look_forward = True
@@ -139,16 +144,14 @@ class Pacman(Creature):
         self.game.current_room.paclives.remove_life()
         self.game.current_room.toDraw.remove(self)
         self.game.current_room.eventListeners.remove(self)
+        for e in self.game.current_room.ghosts:
+            e.die()
+            self.game.current_room.toDraw.remove(e)
+            self.game.current_room.eventListeners.remove(e)
         if len(self.game.current_room.paclives.lives):
+            self.spawner.spawn(10+PacmanDead.frame_states)
             for e in self.game.current_room.ghosts:
-                e.die()
-                self.game.current_room.toDraw.remove(e)
-                self.game.current_room.eventListeners.remove(e)
-            self.spawner.spawn(120)
-            for e in self.game.current_room.ghosts:
-                e.spawner.spawn(120)
-        else:
-            transit(self.game, rooms.Final(self.game, False))
+                e.spawner.spawn(10+PacmanDead.frame_states)
         d = PacmanDead(self.game, x=self.x, y=self.y)
         self.game.current_room.toDraw.append(d)
 
@@ -162,6 +165,7 @@ class Pacman(Creature):
             self.look_forward if self.look_vertical else
             not self.look_forward, False)
         self.image = pygame.transform.rotate(self.image, -90 if self.look_vertical else 0)
+        self.image = pygame.transform.scale(self.image, (self.size, self.size))
         Drawable.draw(self)
         self.image = im
 
@@ -195,6 +199,8 @@ class PacmanDead(Drawable):
 
     def die(self):
         self.game.current_room.toDraw.remove(self)
+        if not len(self.game.current_room.paclives.lives):
+            transit(self.game, rooms.Final(self.game, False))
 
 
 class Ghost(Creature):
@@ -202,13 +208,12 @@ class Ghost(Creature):
     vuln = pygame.image.load("images/vuln.png")
     dead = pygame.image.load("images/eyes.png")
     eye_dist = 5  # Растояние от глаза до середины
-    directions = [(0, -1), (-1, 0), (0, 1), (1, 0)]
 
     def __init__(self, game: Game, x: int = 0, y: int = 0, target=None):
         super().__init__(game, x, y, (15, 15))
         self.vulnerable = False
         self.vulnerable_begin = 0
-        self.speed = 1
+        self.speed = 0
         self.eye_color = Color.WHITE
         self.eye_rad = 3  # Размер зрачка
         self.update_pos = True
@@ -222,15 +227,15 @@ class Ghost(Creature):
                 self.image = self.type_image
                 self.vulnerable = False
                 self.update_pos = True
-                self.target = self.game.current_room.pacman
+                if self.is_alive:
+                    self.target = self.game.current_room.pacman
             elif self.vulnerable_begin + self.vulnerable_steps - self.game.counter < 300:
                 if not self.game.counter % (6+(self.vulnerable_begin + self.vulnerable_steps - self.game.counter)//30):
                     self.image = self.type_image if self.image is self.vuln else self.vuln
-
         if (self.x, self.y) == self.npp and self.update_pos is 0:
             self.update_pos = True
 
-        if not self.npp or (self.x, self.y) == self.npp and self.update_pos is True:
+        if self.update_pos is True:
             self.npp = self.game.current_room.path.find((self.x, self.y),
                                                         (self.target.x, self.target.y))
             if len(self.npp) > 1:
@@ -240,17 +245,32 @@ class Ghost(Creature):
             else:
                 self.npp = (self.x, self.y)
                 self.update_pos = False
+        '''
+        Далее приведение пытается приблизиться к 
+        локальной цели, причём, оно не должно пролететь мимо цели
+        '''
         shift_x, shift_y = 0, 0
         if self.x > self.npp[0]:
-            shift_x = -1
+            if self.x - self.speed < self.npp[0]:
+                shift_x = self.npp[0] - self.x
+            else:
+                shift_x = -self.speed
         elif self.x < self.npp[0]:
-            shift_x = 1
+            if self.x + self.speed > self.npp[0]:
+                shift_x = self.npp[0] - self.x
+            else:
+                shift_x = self.speed
         elif self.y > self.npp[1]:
-            shift_y = -1
+            if self.y - self.speed < self.npp[1]:
+                shift_y = self.npp[1] - self.y
+            else:
+                shift_y = -self.speed
         elif self.y < self.npp[1]:
-            shift_y = 1
-
-        self.move(self.speed*shift_x, self.speed*shift_y)
+            if self.y + self.speed > self.npp[1]:
+                shift_y = self.npp[1] - self.y
+            else:
+                shift_y = self.speed
+        self.move(shift_x, shift_y)
 
     def collide(self, others, react: bool = True) -> bool:
         if not super().collide(others):
@@ -262,13 +282,13 @@ class Ghost(Creature):
         return True
 
     def vulnerable_mode(self):
-        if not self.vulnerable:
+        if not self.vulnerable and self.is_alive:
             self.game.current_room.combos = 0
             self.vulnerable = True
             self.image = self.vuln
             self.update_pos = True
             self.target = self.spawner
-        self.vulnerable_begin = self.game.counter
+        self.vulnerable_begin = self.game.counter + randint(-20, 20)
 
     def creation(self):
         super().creation()
@@ -285,9 +305,6 @@ class Ghost(Creature):
     def die(self):
         if self.is_alive:
             self.speed = 5
-            # Немного костыльное решение, но я сплю уже
-            self.x = (self.x//30)*30+15
-            self.y = (self.y//30)*30+15
             self.image = self.dead
             self.target = self.spawner
             self.update_pos = True
@@ -353,7 +370,7 @@ class Energizer(Seed):
 
 
 class Teleport(BasicObject):
-    cooldown = 400
+    cooldown = 40
 
     def __init__(self, game: Game, x, y):
         super().__init__(game)
@@ -492,7 +509,7 @@ class Wall(Drawable):
 
 class EctoWall(Drawable):
     '''Стена сквозная для призраков'''
-    width = 8
+    width = Wall.line_width+2
 
     def __init__(self, game: Game, x: int = 0, y: int = 0):
         super().__init__(game, x, y)
