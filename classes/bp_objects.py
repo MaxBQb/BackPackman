@@ -279,7 +279,7 @@ class Ghost(Creature):
                     if e is not self and e.occupant:
                         self.path.occupy_pos(*e.get_pos())
 
-        if self.npp and (self.x, self.y) == self.npp.pos and self.update_pos is 0:
+        if self.npp and (self.x, self.y) == self.npp.pos and self.update_pos == 0:
             self.update_pos = True
 
         if self.update_pos:
